@@ -63,28 +63,28 @@
 
 ## 3. Role-Based Access Control and Security
 
-- [ ] 3.1 Create DepartmentController for department management
+- [x] 3.1 Create DepartmentController for department management
   - Implement DepartmentController with CRUD operations for departments
   - Add endpoints for department creation, update, status management, and soft delete
   - Create department user assignment endpoints
   - Write integration tests for department management API
   - _Requirements: 8.4, 8.5, 8.6, 8.7_
 
-- [ ] 3.2 Implement role-based authorization framework
+- [x] 3.2 Implement role-based authorization framework
   - Create custom authorization annotations for different role levels
   - Implement method-level security with role and permission checking
   - Create authorization service for project/department scope validation
   - Write unit tests for authorization logic
   - _Requirements: 6.1, 6.2, 6.3, 8.4, 8.5, 8.6, 8.7_
 
-- [ ] 3.3 Build access control enforcement for document operations
+- [x] 3.3 Build access control enforcement for document operations
   - Implement document access control service with project/department filtering
   - Create permission checking interceptors for document-related operations
   - Add access control validation for search and Q&A operations
   - Write integration tests for access control enforcement
   - _Requirements: 6.3, 6.4, 6.5, 6.6, 6.7_
 
-- [ ] 3.4 Implement audit logging system
+- [x] 3.4 Implement audit logging system
   - Create AuditLog JPA entity with proper indexing for PostgreSQL
   - Implement AuditLogRepository with search and filtering capabilities
   - Create audit logging aspect for automatic activity capture using Spring AOP
