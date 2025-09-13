@@ -6,7 +6,7 @@ You have access to the following files:
 Your task is to:
 1. Read and understand all the above files.
 2. Generate the complete codebase based on the requirements and design.
-3. Implement tasks in the exact order listed in .amazonq/specs/tasks.md.
+3. Implement tasks which marking `[ ]` in the exact order listed in .amazonq/specs/tasks.md.
 4. After successfully completing each task, update .amazonq/specs/tasks.md by changing the corresponding `[ ]` to `[x]`.
 
 Constraints:
