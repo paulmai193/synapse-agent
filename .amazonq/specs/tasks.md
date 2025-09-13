@@ -96,7 +96,7 @@
 
 ## 4. Document Processing and Storage System
 
-- [ ] 4.1 Create document entity models and MongoDB repositories
+- [x] 4.1 Create document entity models and MongoDB repositories
   - Create MongoDB repository package structure (synapse-data/repository/mongo)
   - Implement Document and Chunk MongoDB entities with access control fields
   - Create DocumentRepository and ChunkRepository with custom query methods
@@ -105,14 +105,14 @@
   - Write unit tests for MongoDB repository operations
   - _Requirements: 1.1, 1.2, 1.3, 6.4_
 
-- [ ] 4.2 Create DocumentService for document management
+- [x] 4.2 Create DocumentService for document management
   - Implement DocumentService with CRUD operations for documents
   - Add document access control validation based on user project/department assignments
   - Create document search and filtering methods
   - Write unit tests for document service functionality
   - _Requirements: 1.1, 1.2, 1.3, 6.4_
 
-- [ ] 4.3 Implement document upload and processing service
+- [x] 4.3 Implement document upload and processing service
   - Create DocumentProcessingService for file upload handling
   - Implement content extraction for multiple file formats (PDF, DOCX, TXT)
   - Add document validation, virus scanning, and size limit enforcement
@@ -120,7 +120,7 @@
   - Write unit tests for document processing functionality
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 6.4_
 
-- [ ] 4.4 Build document upload REST API
+- [x] 4.4 Build document upload REST API
   - Implement DocumentController with file upload endpoints
   - Add multipart file handling with progress tracking
   - Create document metadata management endpoints
