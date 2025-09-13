@@ -146,7 +146,7 @@
   - Write unit tests for text processing functions
   - _Requirements: 1.2, 7.1, 7.2, 7.3, 2.1, 2.2_
 
-- [ ] 5.3 Build embedding generation and translation services
+- [x] 5.3 Build embedding generation and translation services
   - Implement embedding generation API with batch processing support using sentence-transformers
   - Integrate translation service using Google Translate API or deep-translator library
   - Add Redis caching layer for frequently requested embeddings and translations

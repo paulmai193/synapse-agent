@@ -2,6 +2,7 @@ import logging
 from typing import List
 from sentence_transformers import SentenceTransformer
 from config.settings import settings
+from app.services.cache_service import CacheService
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class EmbeddingService:
     
     def __init__(self):
         self.model = None
+        self.cache_service = CacheService()
         self._load_model()
     
     def _load_model(self):
@@ -39,9 +41,20 @@ class EmbeddingService:
         if not text or not text.strip():
             return []
         
+        # Check cache first
+        cached_embedding = self.cache_service.get_embedding(text.strip())
+        if cached_embedding:
+            logger.debug("Retrieved embedding from cache")
+            return cached_embedding
+        
         try:
             embedding = self.model.encode(text.strip())
-            return embedding.tolist()
+            embedding_list = embedding.tolist()
+            
+            # Cache the embedding
+            self.cache_service.set_embedding(text.strip(), embedding_list)
+            
+            return embedding_list
         except Exception as e:
             logger.error(f"Failed to generate embedding: {e}")
             return []

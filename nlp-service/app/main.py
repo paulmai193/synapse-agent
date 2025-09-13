@@ -5,6 +5,8 @@ from config.logging import setup_logging
 from config.settings import settings
 from app.api.health import router as health_router
 from app.api.text_processing import router as text_processing_router
+from app.api.translation import router as translation_router
+from app.api.cache import router as cache_router
 
 # Setup logging
 setup_logging()
@@ -28,6 +30,8 @@ app.add_middleware(
 # Include routers
 app.include_router(health_router, prefix="/health", tags=["health"])
 app.include_router(text_processing_router, prefix="/api/v1/text", tags=["text-processing"])
+app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
+app.include_router(cache_router, prefix="/api/v1/cache", tags=["cache"])
 
 @app.on_event("startup")
 async def startup_event():
