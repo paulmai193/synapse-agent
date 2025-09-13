@@ -4,6 +4,7 @@ import logging
 from config.logging import setup_logging
 from config.settings import settings
 from app.api.health import router as health_router
+from app.api.text_processing import router as text_processing_router
 
 # Setup logging
 setup_logging()
@@ -26,6 +27,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health_router, prefix="/health", tags=["health"])
+app.include_router(text_processing_router, prefix="/api/v1/text", tags=["text-processing"])
 
 @app.on_event("startup")
 async def startup_event():
