@@ -31,14 +31,14 @@
   - Write unit tests for repository layer functionality
   - _Requirements: 8.1, 8.2, 8.4, 6.1, 6.2_
 
-- [ ] 2.2 Implement user registration and role management services
+- [x] 2.2 Implement user registration and role management services
   - Create UserService with registration, role assignment, and user management methods
   - Implement ProjectService and DepartmentService for organizational structure management
   - Add validation for single project assignment and multiple department membership
   - Create unit tests for service layer business logic
   - _Requirements: 8.2, 8.3, 8.4, 6.1, 6.2_
 
-- [ ] 2.3 Build user management REST API controllers
+- [x] 2.3 Build user management REST API controllers
   - Implement UserController with endpoints for registration, role assignment, status updates
   - Create ProjectController and DepartmentController with CRUD operations
   - Add request/response DTOs with validation annotations
@@ -46,14 +46,14 @@
   - Write integration tests for API endpoints
   - _Requirements: 8.2, 8.3, 8.4, 8.5, 8.6, 8.7_
 
-- [ ] 2.4 Complete first-time setup and default admin creation
+- [x] 2.4 Complete first-time setup and default admin creation
   - Extend DataInitializationService to create default SYSTEM_ADMIN user with secure password generation
   - Add setup completion flag to prevent multiple initializations
   - Create setup wizard API endpoints for initial configuration
   - Write unit tests for initialization service
   - _Requirements: 8.1_
 
-- [ ] 2.5 Add missing entity relationships and DTOs
+- [x] 2.5 Add missing entity relationships and DTOs
   - Complete UserProject and UserDepartment entity implementations
   - Create missing DTOs for department management (CreateDepartmentRequest, DepartmentDto)
   - Add user registration endpoint to AuthController
