@@ -39,16 +39,17 @@ This document defines the software development rules applied across the project 
 ## 🧑‍💻 Coding Conventions
 
 ### 🔷 Java
-- Follow the rules in [java-coding-convention.md](https://fptsoftware362-my.sharepoint.com/personal/daimt_fpt_com/Documents/Microsoft%20Copilot%20Chat%20Files/java-coding-convention.md?EntityRepresentationId=779c74f0-9866-4e33-a167-dda25fc4c153) [1](https://fptsoftware362-my.sharepoint.com/personal/daimt_fpt_com/Documents/Microsoft%20Copilot%20Chat%20Files/java-coding-convention.md)
+- Follow the rules in [java-coding-convention.md]
 - Key highlights:
   - No wildcard imports
   - Class names: PascalCase, method names: camelCase
   - One public class per file
   - Always use `@Override` for overridden methods
   - Javadoc required for all public classes and methods
+  - Use Prettier for formatting
 
 ### 🐍 Python
-- Follow the rules in [python-coding-convention.md](https://fptsoftware362-my.sharepoint.com/personal/daimt_fpt_com/Documents/Microsoft%20Copilot%20Chat%20Files/python-coding-convention.md?EntityRepresentationId=0c900d4a-a75a-4363-96ce-5d79a16f61e3) [2](https://fptsoftware362-my.sharepoint.com/personal/daimt_fpt_com/Documents/Microsoft%20Copilot%20Chat%20Files/python-coding-convention.md)
+- Follow the rules in [python-coding-convention.md]
 - Key highlights:
   - Variable/function names: `snake_case`, class names: `PascalCase`
   - Docstrings must follow https://peps.python.org/pep-0257/
@@ -56,17 +57,12 @@ This document defines the software development rules applied across the project 
   - Clear separation of standard, external, and internal imports
 
 ### ⚛️ ReactJS
-- Follow the rules in [reactjs-coding-convention.md](https://fptsoftware362-my.sharepoint.com/personal/daimt_fpt_com/Documents/Microsoft%20Copilot%20Chat%20Files/reactjs-coding-convention.md?EntityRepresentationId=77a6e99f-59fe-4ea0-9ab2-2171b80903e9) [3](https://fptsoftware362-my.sharepoint.com/personal/daimt_fpt_com/Documents/Microsoft%20Copilot%20Chat%20Files/reactjs-coding-convention.md)
+- Follow the rules in [reactjs-coding-convention.md]
 - Key highlights:
   - Components: PascalCase, handlers: camelCase
   - Use functional components and hooks
   - Extract reusable logic into custom hooks
   - Use ESLint + Prettier for formatting
-
----
-
-## 📂 Recommended Folder Structure
-See details in `./docs/architecture/source-structure.md`
 
 ---
 
