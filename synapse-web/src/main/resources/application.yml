@@ -74,6 +74,8 @@ synapse:
   vector:
     database:
       url: http://localhost:6333
+      collection-name: synapse_embeddings
+      vector-size: 384
   llm:
     openai:
       api-key: ${OPENAI_API_KEY:}
