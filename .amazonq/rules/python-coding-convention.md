@@ -1,31 +1,41 @@
-# Coding Convention cho Ứng dụng Python
+# 🐍 Python Application Coding Convention
 
-## 1. Quy tắc đặt tên biến, hàm, lớp
+## 1. Naming Rules
 
-- **Biến và hàm:** Sử dụng kiểu `snake_case`, tên phải rõ nghĩa.
-  - Ví dụ: `user_name`, `calculate_total()`
-- **Lớp:** Sử dụng kiểu `PascalCase`.
-  - Ví dụ: `OrderProcessor`, `CustomerProfile`
-- **Hằng số:** Sử dụng kiểu `UPPER_CASE`.
-  - Ví dụ: `MAX_RETRIES`, `DEFAULT_TIMEOUT`
-- **Tên file:** Sử dụng kiểu `snake_case`.
-  - Ví dụ: `order_service.py`, `data_loader.py`
+- **Variables and Functions**: Use `snake_case`, with meaningful names.  
+  *Example*: `user_name`, `calculate_total()`
 
-## 2. Bố cục file
+- **Classes**: Use `PascalCase`.  
+  *Example*: `OrderProcessor`, `CustomerProfile`
 
-- Đầu file: Import các thư viện chuẩn trước, sau đó là thư viện bên ngoài, cuối cùng là import nội bộ (theo thứ tự alphabet).
-- Tiếp theo là các hằng số cấu hình.
-- Định nghĩa class, function.
-- Đoạn code thực thi (nếu có) đặt trong khối `if __name__ == "__main__":`.
-- Một file nên tập trung một chức năng chính (Single Responsibility Principle).
+- **Constants**: Use `UPPER_CASE`.  
+  *Example*: `MAX_RETRIES`, `DEFAULT_TIMEOUT`
 
-**Ví dụ bố cục:**
+- **File Names**: Use `snake_case`.  
+  *Example*: `order_service.py`, `data_loader.py`
+
+---
+
+## 2. File Structure
+
+- **Top of File**:  
+  - Import standard libraries first  
+  - Then third-party libraries  
+  - Finally internal modules (alphabetically)
+
+- **Next**: Configuration constants
+
+- **Then**: Class and function definitions
+
+- **Execution Code**: Place inside `if __name__ == "__main__":`
+
+- **Single Responsibility**: Each file should focus on one main function
+
+**Example Layout**:
 ```python
 import os
 import sys
-
 import requests
-
 from utils import calculate_total
 
 MAX_SIZE = 1024
@@ -40,98 +50,115 @@ if __name__ == "__main__":
     process_order()
 ```
 
-## 3. Cách viết docstring
+---
 
-- Sử dụng docstring cho module, class, function.
-- Docstring phải mô tả chức năng, tham số, giá trị trả về và ngoại lệ (nếu có).
-- Sử dụng định dạng [PEP 257](https://peps.python.org/pep-0257/).
+## 3. Docstring Guidelines
 
-**Ví dụ:**
+- Use docstrings for modules, classes, and functions
+- Must describe:
+  - Purpose
+  - Parameters
+  - Return values
+  - Exceptions (if any)
+- Follow https://peps.python.org/pep-0257/
+
+**Example**:
 ```python
 def calculate_total(price: float, tax: float) -> float:
     """
-    Tính tổng giá trị sau thuế.
+    Calculate total price after tax.
 
     Args:
-        price (float): Giá gốc.
-        tax (float): Thuế suất.
+        price (float): Base price.
+        tax (float): Tax rate.
 
     Returns:
-        float: Giá sau thuế.
+        float: Final price after tax.
 
     Raises:
-        ValueError: Nếu price hoặc tax âm.
+        ValueError: If price or tax is negative.
     """
     if price < 0 or tax < 0:
-        raise ValueError("Price và tax phải không âm.")
+        raise ValueError("Price and tax must be non-negative.")
     return price * (1 + tax)
 ```
 
-## 4. Quy tắc indentation
+---
 
-- Sử dụng 4 dấu cách cho mỗi cấp indent (không dùng tab).
-- Không indent dòng trống.
-- Block lồng nhau nên hạn chế quá sâu (khuyến nghị không quá 3 cấp).
+## 4. Indentation Rules
 
-## 5. Cách xử lý lỗi
+- Use **4 spaces** per indentation level (no tabs)
+- Do not indent blank lines
+- Avoid deep nesting (recommended: max 3 levels)
 
-- Sử dụng `try`/`except` để bắt và xử lý ngoại lệ.
-- Chỉ bắt các ngoại lệ cụ thể, tránh bắt chung chung (`except Exception`).
-- Log lỗi đầy đủ thông tin (sử dụng module `logging`).
-- Không che giấu lỗi, không để pass trống nếu không thực sự cần thiết.
+---
 
-**Ví dụ:**
+## 5. Error Handling
+
+- Use `try`/`except` blocks
+- Catch **specific exceptions** only
+- Log errors with full context using `logging`
+- Avoid silent failures or empty `pass` blocks unless necessary
+
+**Example**:
 ```python
 import logging
 
 try:
     result = calculate_total(price, tax)
 except ValueError as e:
-    logging.error(f"Lỗi giá trị: {e}")
+    logging.error(f"Value error: {e}")
     raise
 ```
 
-## 6. Quy tắc import
+---
 
-- Mỗi dòng chỉ import một module.
-- Import chỉ ở đầu file, không import động trong function (trừ trường hợp đặc biệt).
-- Sắp xếp import theo thứ tự: chuẩn → bên ngoài → nội bộ.
-- Tránh import toàn bộ (`from module import *`).
+## 6. Import Rules
 
-## 7. Quy tắc comment
+- One module per line
+- All imports at the top of the file
+- Avoid dynamic imports inside functions (unless necessary)
+- Order: standard → third-party → internal
+- Avoid wildcard imports (`from module import *`)
 
-- Comment phải rõ ràng, đúng chỗ, tránh thừa thãi.
-- Chỉ comment những đoạn code phức tạp hoặc logic đặc biệt.
-- Sử dụng tiếng Việt hoặc tiếng Anh nhất quán trong dự án.
-- Không dùng comment để “tắt” code, thay vào đó sử dụng git hoặc các công cụ quản lý version.
+---
 
-**Ví dụ:**
+## 7. Commenting Guidelines
+
+- Comments must be clear and relevant
+- Only comment on complex or non-obvious logic
+- Use either Vietnamese or English consistently across the project
+- Do not use comments to disable code — use Git or version control tools
+
+**Example**:
 ```python
-# Tính toán giá trị trung bình, loại bỏ outlier
+# Calculate average value, excluding outliers
 def compute_average(values):
-    # Bỏ các giá trị lớn hơn 3 lần độ lệch chuẩn
+    # Remove values greater than 3 standard deviations
     pass
 ```
 
-## 8. Best Practices cho Python Application
+---
 
-- Tuân thủ PEP8 và PEP257.
-- Sử dụng các công cụ kiểm tra code: `flake8`, `black`, `pylint`.
-- Viết unit test (dùng `pytest` hoặc `unittest`), đặt test riêng trong thư mục `tests/`.
-- Đảm bảo code dễ đọc, dễ bảo trì.
-- Sử dụng type hinting cho function.
-- Tránh hard-code dữ liệu trong code, sử dụng file cấu hình hoặc biến môi trường.
-- Đảm bảo tài liệu nội bộ đầy đủ (README, HLD, API doc).
-- Kiểm soát vòng lặp lồng nhau, tránh quá phức tạp.
+## 8. Python Best Practices
+
+- Follow https://peps.python.org/pep-0008/ and https://peps.python.org/pep-0257/
+- Use code quality tools: `flake8`, `black`, `pylint`
+- Write unit tests (`pytest` or `unittest`) and place in `tests/` folder
+- Ensure code is readable and maintainable
+- Use type hints for all functions
+- Avoid hardcoded values — use config files or environment variables
+- Maintain internal documentation (README, HLD, API docs)
+- Avoid overly complex nested loops
 
 ---
 
-## Tài liệu tham khảo
+## 📚 References
 
-- [PEP 8 – Style Guide for Python Code](https://peps.python.org/pep-0008/)
-- [PEP 257 – Docstring Conventions](https://peps.python.org/pep-0257/)
-- [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
+- https://peps.python.org/pep-0008/
+- https://peps.python.org/pep-0257/
+- https://google.github.io/styleguide/pyguide.html
 
 ---
 
-**Lưu ý:** Coding convention này có thể điều chỉnh theo yêu cầu đặc thù của dự án hoặc tổ chức. Nên phổ biến và training cho tất cả các thành viên trước khi áp dụng.
+**Note**: This coding convention may be adjusted based on project or organizational needs. It should be shared and trained across all team members before adoption.
