@@ -10,6 +10,7 @@ import Profile from './pages/auth/Profile';
 import Dashboard from './pages/dashboard/Dashboard';
 import Documents from './pages/documents/Documents';
 import Search from './pages/search/Search';
+import { QA } from './pages/QA';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 function App() {
@@ -51,7 +52,7 @@ function AppContent() {
               path="/qa"
               element={
                 <ProtectedRoute>
-                  <div>Q&A Page - Coming Soon</div>
+                  <QA />
                 </ProtectedRoute>
               }
             />
