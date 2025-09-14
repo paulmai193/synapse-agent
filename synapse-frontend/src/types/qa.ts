@@ -1,81 +1,42 @@
 export interface QARequest {
   question: string;
-  language: string;
+  language?: string;
   conversationId?: string;
-  context?: {
-    documentIds?: string[];
-    projectId?: string;
-    departmentIds?: string[];
-  };
 }
 
 export interface QAResponse {
   id: string;
   answer: string;
+  confidence: number;
+  sources: QASource[];
   language: string;
-  sources: SourceReference[];
-  confidenceScore: number;
-  conversationId: string;
-  timestamp: string;
   processingTime: number;
+  conversationId: string;
 }
 
-export interface SourceReference {
-  id: string;
+export interface QASource {
   documentId: string;
   title: string;
-  snippet: string;
-  relevanceScore: number;
-  chunkIndex: number;
-  startPosition: number;
-  endPosition: number;
-}
-
-export interface ConversationMessage {
-  id: string;
-  role: 'user' | 'assistant';
   content: string;
-  timestamp: string;
-  sources?: SourceReference[];
-  confidenceScore?: number;
-  feedback?: MessageFeedback;
-  isBookmarked?: boolean;
-}
-
-export interface MessageFeedback {
-  isHelpful: boolean;
-  comment?: string;
-  timestamp: string;
+  score: number;
+  page?: number;
 }
 
 export interface Conversation {
   id: string;
   title: string;
-  messages: ConversationMessage[];
-  isBookmarked: boolean;
+  messages: Message[];
   createdAt: string;
   updatedAt: string;
-  userId: string;
+  bookmarked: boolean;
 }
 
-export interface FeedbackRequest {
-  messageId: string;
-  isHelpful: boolean;
-  comment?: string;
-}
-
-export interface QAState {
-  conversations: Conversation[];
-  currentConversation: Conversation | null;
-  isLoading: boolean;
-  error: string | null;
-  searchSuggestions: string[];
-}
-
-export interface QAAnalytics {
-  totalQuestions: number;
-  averageConfidenceScore: number;
-  mostCommonTopics: string[];
-  languageDistribution: Record<string, number>;
-  userSatisfactionRate: number;
+export interface Message {
+  id: string;
+  type: 'question' | 'answer';
+  content: string;
+  timestamp: string;
+  sources?: QASource[];
+  confidence?: number;
+  feedback?: 'helpful' | 'not_helpful';
 }

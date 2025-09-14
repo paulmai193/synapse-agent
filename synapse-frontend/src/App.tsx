@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Documents from './pages/Documents';
 import Search from './pages/Search';
+import QA from './pages/QA';
 
 const theme = createTheme({
   palette: {
@@ -55,6 +56,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Search />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="qa" 
+            element={
+              <ProtectedRoute>
+                <QA />
               </ProtectedRoute>
             } 
           />

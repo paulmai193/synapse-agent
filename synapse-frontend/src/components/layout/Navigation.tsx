@@ -34,6 +34,9 @@ const Navigation: React.FC = () => {
       <Button color="inherit" component={Link} to="/search">
         Search
       </Button>
+      <Button color="inherit" component={Link} to="/qa">
+        Q&A
+      </Button>
       <Button color="inherit" component={Link} to="/documents">
         Documents
       </Button>
