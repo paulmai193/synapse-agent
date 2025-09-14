@@ -77,9 +77,22 @@ synapse:
       collection-name: synapse_embeddings
       vector-size: 384
   llm:
-    openai:
-      api-key: ${OPENAI_API_KEY:}
-      model: gpt-3.5-turbo
+    ollama:
+      url: http://localhost:11434
+      model: llama3.1:8b
+      timeout: 30000 # 30 seconds
+      max-tokens: 2048
+      temperature: 0.7
+      circuit-breaker:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30000
+        sliding-window-size: 10
+      retry:
+        max-attempts: 3
+        wait-duration: 1000
+      rate-limiter:
+        limit-for-period: 10
+        limit-refresh-period: 60000
   document:
     upload:
       max-file-size: 100MB

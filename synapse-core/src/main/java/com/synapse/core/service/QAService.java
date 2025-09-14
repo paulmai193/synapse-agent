@@ -1,12 +1,15 @@
 package com.synapse.core.service;
 
 import com.synapse.core.dto.*;
+import com.synapse.data.llm.LLMService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class QAService {
@@ -15,6 +18,9 @@ public class QAService {
 
     @Autowired
     private SearchService searchService;
+    
+    @Autowired
+    private LLMService llmService;
 
     public QAResponse answerQuestion(QARequest request, Long userId) {
         long startTime = System.currentTimeMillis();
@@ -31,9 +37,20 @@ public class QAService {
             // Search for relevant context
             SearchResponse searchResponse = searchService.search(searchRequest, userId);
 
-            // Generate answer based on search results
-            String answer = generateAnswer(request.getQuestion(), searchResponse);
-            Float confidence = calculateConfidence(searchResponse);
+            // Generate answer using LLM service
+            List<Map<String, Object>> contextChunks = prepareContextChunks(searchResponse);
+            
+            CompletableFuture<LLMService.QAResult> qaResultFuture = llmService.generateQAResponse(
+                request.getQuestion(), 
+                contextChunks, 
+                request.getLanguage()
+            );
+            
+            // Wait for LLM response with timeout
+            LLMService.QAResult qaResult = qaResultFuture.get(30, TimeUnit.SECONDS);
+            
+            String answer = qaResult.getAnswer();
+            Float confidence = (float) qaResult.getConfidence();
 
             // Create response
             QAResponse response = new QAResponse();
@@ -52,16 +69,60 @@ public class QAService {
 
         } catch (Exception e) {
             logger.error("Q&A failed for question: {}", request.getQuestion(), e);
-            return createErrorResponse(request, startTime);
+            
+            // Try fallback answer generation if LLM fails
+            try {
+                SearchRequest searchRequest = new SearchRequest();
+                searchRequest.setQuery(request.getQuestion());
+                searchRequest.setLimit(5);
+                searchRequest.setLanguage(request.getLanguage());
+                searchRequest.setProjectId(request.getProjectId());
+                searchRequest.setDepartmentId(request.getDepartmentId());
+                
+                SearchResponse searchResponse = searchService.search(searchRequest, userId);
+                String fallbackAnswer = generateFallbackAnswer(request.getQuestion(), searchResponse);
+                Float fallbackConfidence = calculateConfidence(searchResponse);
+                
+                QAResponse response = new QAResponse();
+                response.setQuestion(request.getQuestion());
+                response.setAnswer(fallbackAnswer);
+                response.setConversationId(getOrCreateConversationId(request.getConversationId()));
+                response.setConfidence(fallbackConfidence * 0.5f); // Reduce confidence for fallback
+                response.setSources(searchResponse.getResults());
+                response.setResponseTimeMs(System.currentTimeMillis() - startTime);
+                response.setLanguage(request.getLanguage());
+                
+                return response;
+                
+            } catch (Exception fallbackException) {
+                logger.error("Fallback Q&A also failed", fallbackException);
+                return createErrorResponse(request, startTime);
+            }
         }
     }
 
-    private String generateAnswer(String question, SearchResponse searchResponse) {
+    private List<Map<String, Object>> prepareContextChunks(SearchResponse searchResponse) {
+        List<Map<String, Object>> contextChunks = new ArrayList<>();
+        
+        for (SearchResult result : searchResponse.getResults()) {
+            Map<String, Object> chunk = new HashMap<>();
+            chunk.put("content", result.getContent());
+            chunk.put("documentTitle", result.getTitle());
+            chunk.put("documentId", result.getDocumentId());
+            chunk.put("confidence", (double) result.getRelevanceScore());
+            chunk.put("source", result.getSource());
+            contextChunks.add(chunk);
+        }
+        
+        return contextChunks;
+    }
+    
+    private String generateFallbackAnswer(String question, SearchResponse searchResponse) {
         if (searchResponse.getResults().isEmpty()) {
             return "I couldn't find relevant information to answer your question. Please try rephrasing your question or check if you have access to the relevant documents.";
         }
 
-        // Simple answer generation - in a real implementation, this would use LLM
+        // Fallback answer generation when LLM is unavailable
         StringBuilder answer = new StringBuilder();
         answer.append("Based on the available documents, here's what I found:\n\n");
         
