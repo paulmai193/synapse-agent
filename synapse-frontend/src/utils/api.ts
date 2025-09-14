@@ -1,68 +1,47 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { API_CONFIG, STORAGE_KEYS } from '../config/api';
+import axios from 'axios';
+import { LoginRequest, RegisterRequest } from '../types/auth';
 
-class ApiClient {
-  private client: AxiosInstance;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
-  constructor() {
-    this.client = axios.create({
-      baseURL: API_CONFIG.BASE_URL,
-      timeout: API_CONFIG.TIMEOUT,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-    this.setupInterceptors();
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+  return config;
+});
 
-  private setupInterceptors() {
-    // Request interceptor to add auth token
-    this.client.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    // Response interceptor for error handling
-    this.client.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        if (error.response?.status === 401) {
-          // Token expired, redirect to login
-          localStorage.removeItem(STORAGE_KEYS.TOKEN);
-          localStorage.removeItem(STORAGE_KEYS.USER);
-          window.location.href = '/login';
-        }
-        return Promise.reject(error);
-      }
-    );
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
   }
+);
 
-  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.get(url, config);
+export const authApi = {
+  login: async (credentials: LoginRequest) => {
+    const response = await apiClient.post('/auth/login', credentials);
     return response.data;
-  }
-
-  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.post(url, data, config);
+  },
+  register: async (userData: RegisterRequest) => {
+    const response = await apiClient.post('/auth/register', userData);
     return response.data;
-  }
-
-  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.put(url, data, config);
+  },
+  getCurrentUser: async () => {
+    const response = await apiClient.get('/auth/me');
     return response.data;
-  }
+  },
+};
 
-  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.delete(url, config);
-    return response.data;
-  }
-}
-
-export const apiClient = new ApiClient();
+export default apiClient;

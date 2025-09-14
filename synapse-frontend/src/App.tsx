@@ -1,126 +1,101 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import Layout from './components/layout/Layout';
-import ProtectedRoute from './components/common/ProtectedRoute';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
-import Profile from './pages/auth/Profile';
-import Dashboard from './pages/dashboard/Dashboard';
-import Documents from './pages/documents/Documents';
-import Search from './pages/search/Search';
-import { QA } from './pages/QA';
-import { UserManagement } from './pages/admin/UserManagement';
-import { ProjectManagement } from './pages/admin/ProjectManagement';
-import { DepartmentManagement } from './pages/admin/DepartmentManagement';
-import { AuditDashboard } from './pages/admin/AuditDashboard';
-import { useTokenRefresh } from './hooks/useTokenRefresh';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import { useDispatch, useSelector } from 'react-redux';
+import { setUser } from './store/authSlice';
+import { authApi } from './utils/api';
+import { RootState } from './store';
 
-function App() {
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+});
+
+const AppContent: React.FC = () => {
+  const dispatch = useDispatch();
+  const { token, isAuthenticated } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      if (token && !isAuthenticated) {
+        try {
+          const user = await authApi.getCurrentUser();
+          dispatch(setUser(user));
+        } catch (error) {
+          localStorage.removeItem('token');
+        }
+      }
+    };
+
+    initAuth();
+  }, [token, isAuthenticated, dispatch]);
+
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route 
+            path="dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="search" 
+            element={
+              <ProtectedRoute>
+                <div>Search Page (Coming Soon)</div>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="documents" 
+            element={
+              <ProtectedRoute>
+                <div>Documents Page (Coming Soon)</div>
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="admin" 
+            element={
+              <ProtectedRoute requiredRoles={['SYSTEM_ADMIN', 'PROJECT_ADMIN', 'DEPARTMENT_ADMIN']}>
+                <div>Admin Page (Coming Soon)</div>
+              </ProtectedRoute>
+            } 
+          />
+        </Route>
+      </Routes>
+    </Router>
+  );
+};
+
+const App: React.FC = () => {
   return (
     <Provider store={store}>
-      <Router>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
         <AppContent />
-      </Router>
+      </ThemeProvider>
     </Provider>
   );
-}
-
-function AppContent() {
-  useTokenRefresh();
-  
-  return (
-    <Layout>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/search"
-              element={
-                <ProtectedRoute>
-                  <Search />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/qa"
-              element={
-                <ProtectedRoute>
-                  <QA />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/documents"
-              element={
-                <ProtectedRoute>
-                  <Documents />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <ProtectedRoute roles={['SYSTEM_ADMIN', 'PROJECT_ADMIN', 'DEPARTMENT_ADMIN']}>
-                  <UserManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/projects"
-              element={
-                <ProtectedRoute roles={['SYSTEM_ADMIN', 'PROJECT_ADMIN']}>
-                  <ProjectManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/departments"
-              element={
-                <ProtectedRoute roles={['SYSTEM_ADMIN', 'DEPARTMENT_ADMIN']}>
-                  <DepartmentManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/audit"
-              element={
-                <ProtectedRoute roles={['SYSTEM_ADMIN']}>
-                  <AuditDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/*"
-              element={
-                <ProtectedRoute roles={['SYSTEM_ADMIN', 'PROJECT_ADMIN', 'DEPARTMENT_ADMIN']}>
-                  <div>Other Admin Pages - Coming Soon</div>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/unauthorized" element={<div>Unauthorized Access</div>} />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<div>Page Not Found</div>} />
-          </Routes>
-        </Layout>
-  );
-}
+};
 
 export default App;

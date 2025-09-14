@@ -1,28 +1,10 @@
 import { configureStore } from '@reduxjs/toolkit';
-import authSlice from './slices/authSlice';
-import uiSlice from './slices/uiSlice';
-import qaSlice from './slices/qaSlice';
-import userSlice from './slices/userSlice';
-import projectSlice from './slices/projectSlice';
-import departmentSlice from './slices/departmentSlice';
-import auditSlice from './slices/auditSlice';
+import authReducer from './authSlice';
 
 export const store = configureStore({
   reducer: {
-    auth: authSlice,
-    ui: uiSlice,
-    qa: qaSlice,
-    users: userSlice,
-    projects: projectSlice,
-    departments: departmentSlice,
-    audit: auditSlice,
+    auth: authReducer,
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: ['persist/PERSIST'],
-      },
-    }),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

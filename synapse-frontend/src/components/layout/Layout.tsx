@@ -1,62 +1,23 @@
 import React from 'react';
-import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import { useAuth } from '../../hooks/useAuth';
+import { Box, AppBar, Toolbar, Typography, Container } from '@mui/material';
+import { Outlet } from 'react-router-dom';
+import Navigation from './Navigation';
 
-interface LayoutProps {
-  children: React.ReactNode;
-}
-
-const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { theme, sidebarOpen } = useSelector((state: RootState) => state.ui);
-  const { isAuthenticated } = useAuth();
-
-  const muiTheme = createTheme({
-    palette: {
-      mode: theme,
-      primary: {
-        main: '#1976d2',
-      },
-      secondary: {
-        main: '#dc004e',
-      },
-    },
-  });
-
-  if (!isAuthenticated) {
-    return (
-      <ThemeProvider theme={muiTheme}>
-        <CssBaseline />
-        <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {children}
-        </Box>
-      </ThemeProvider>
-    );
-  }
-
+const Layout: React.FC = () => {
   return (
-    <ThemeProvider theme={muiTheme}>
-      <CssBaseline />
-      <Box sx={{ display: 'flex' }}>
-        <Header />
-        <Sidebar />
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            p: 3,
-            mt: 8,
-            ml: sidebarOpen ? '240px' : '60px',
-            transition: 'margin-left 0.3s',
-          }}
-        >
-          {children}
-        </Box>
-      </Box>
-    </ThemeProvider>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            Synapse AI Agent
+          </Typography>
+          <Navigation />
+        </Toolbar>
+      </AppBar>
+      <Container component="main" sx={{ flexGrow: 1, py: 3 }}>
+        <Outlet />
+      </Container>
+    </Box>
   );
 };
 
