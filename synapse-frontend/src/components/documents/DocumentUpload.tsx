@@ -1,229 +1,202 @@
 import React, { useState, useCallback } from 'react';
 import {
-  Box,
+  Paper,
   Typography,
-  Button,
+  Box,
   TextField,
+  Button,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Chip,
-  Alert,
   LinearProgress,
-  Paper,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Alert,
 } from '@mui/material';
-import { CloudUpload, AttachFile } from '@mui/icons-material';
 import { useDropzone } from 'react-dropzone';
-import { useAuth } from '../../hooks/useAuth';
-import { apiClient } from '../../utils/api';
-import { API_CONFIG } from '../../config/api';
-import { Document } from '../../types';
+import { documentApi } from '../../utils/documentApi';
+import { DocumentUploadRequest } from '../../types/document';
 
 interface DocumentUploadProps {
-  onSuccess: (document: Document) => void;
-  onCancel: () => void;
+  onUploadComplete?: () => void;
 }
 
-const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess, onCancel }) => {
-  const { user } = useAuth();
-  const [files, setFiles] = useState<File[]>([]);
-  const [title, setTitle] = useState('');
-  const [visibility, setVisibility] = useState<'PROJECT' | 'DEPARTMENT'>('PROJECT');
-  const [selectedDepartments, setSelectedDepartments] = useState<number[]>([]);
+const DocumentUpload: React.FC<DocumentUploadProps> = ({ onUploadComplete }) => {
+  const [file, setFile] = useState<File | null>(null);
+  const [metadata, setMetadata] = useState<DocumentUploadRequest>({
+    title: '',
+    visibility: 'PROJECT',
+    departmentIds: [],
+    tags: [],
+  });
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [tagInput, setTagInput] = useState('');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    setFiles(acceptedFiles);
-    if (acceptedFiles.length > 0 && !title) {
-      setTitle(acceptedFiles[0].name.replace(/\.[^/.]+$/, ''));
+    if (acceptedFiles.length > 0) {
+      const uploadedFile = acceptedFiles[0];
+      setFile(uploadedFile);
+      if (!metadata.title) {
+        setMetadata(prev => ({
+          ...prev,
+          title: uploadedFile.name.replace(/\.[^/.]+$/, '')
+        }));
+      }
     }
-  }, [title]);
+  }, [metadata.title]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
+      'text/plain': ['.txt'],
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/plain': ['.txt'],
-      'text/markdown': ['.md'],
     },
-    maxSize: 100 * 1024 * 1024, // 100MB
-    multiple: false,
+    maxFiles: 1,
   });
 
+  const handleAddTag = () => {
+    if (tagInput.trim() && !metadata.tags?.includes(tagInput.trim())) {
+      setMetadata(prev => ({
+        ...prev,
+        tags: [...(prev.tags || []), tagInput.trim()]
+      }));
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setMetadata(prev => ({
+      ...prev,
+      tags: prev.tags?.filter(tag => tag !== tagToRemove) || []
+    }));
+  };
+
   const handleUpload = async () => {
-    if (!files.length || !title) return;
+    if (!file || !metadata.title) {
+      setError('Please select a file and provide a title');
+      return;
+    }
 
     setUploading(true);
+    setProgress(0);
     setError('');
-    setUploadProgress(0);
 
     try {
-      const formData = new FormData();
-      formData.append('file', files[0]);
-      formData.append('title', title);
-      formData.append('visibility', visibility);
-      
-      if (visibility === 'DEPARTMENT') {
-        formData.append('departmentIds', selectedDepartments.join(','));
-      } else if (user?.projectId) {
-        formData.append('projectId', user.projectId.toString());
-      }
-
-      const response = await apiClient.post<Document>(
-        API_CONFIG.ENDPOINTS.DOCUMENTS + '/upload',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-          onUploadProgress: (progressEvent) => {
-            if (progressEvent.total) {
-              const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-              setUploadProgress(progress);
-            }
-          },
-        }
-      );
-
-      onSuccess(response);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Upload failed');
+      await documentApi.uploadDocument(file, metadata);
+      setProgress(100);
+      setFile(null);
+      setMetadata({
+        title: '',
+        visibility: 'PROJECT',
+        departmentIds: [],
+        tags: [],
+      });
+      onUploadComplete?.();
+    } catch (err) {
+      setError('Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
-  const removeFile = () => {
-    setFiles([]);
-    setTitle('');
-  };
-
   return (
-    <>
-      <DialogTitle>Upload Document</DialogTitle>
-      <DialogContent>
-        <Box sx={{ mb: 3 }}>
-          <Paper
-            {...getRootProps()}
-            sx={{
-              p: 3,
-              border: '2px dashed',
-              borderColor: isDragActive ? 'primary.main' : 'grey.300',
-              bgcolor: isDragActive ? 'action.hover' : 'background.paper',
-              cursor: 'pointer',
-              textAlign: 'center',
-            }}
-          >
-            <input {...getInputProps()} />
-            <CloudUpload sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" gutterBottom>
-              {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              or click to select files
-            </Typography>
-            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-              Supported: PDF, DOCX, TXT, MD (max 100MB)
-            </Typography>
-          </Paper>
-        </Box>
+    <Paper elevation={3} sx={{ p: 3 }}>
+      <Typography variant="h6" gutterBottom>
+        Upload Document
+      </Typography>
 
-        {files.length > 0 && (
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Selected File:
-            </Typography>
-            <Chip
-              icon={<AttachFile />}
-              label={`${files[0].name} (${(files[0].size / 1024 / 1024).toFixed(2)} MB)`}
-              onDelete={removeFile}
-              sx={{ mb: 2 }}
-            />
-          </Box>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      <Box
+        {...getRootProps()}
+        sx={{
+          border: '2px dashed #ccc',
+          borderRadius: 2,
+          p: 3,
+          textAlign: 'center',
+          cursor: 'pointer',
+          mb: 3,
+          backgroundColor: isDragActive ? '#f5f5f5' : 'transparent',
+        }}
+      >
+        <input {...getInputProps()} />
+        {file ? (
+          <Typography>{file.name}</Typography>
+        ) : (
+          <Typography>
+            {isDragActive
+              ? 'Drop the file here...'
+              : 'Drag & drop a file here, or click to select'}
+          </Typography>
         )}
+      </Box>
 
-        <TextField
-          fullWidth
-          label="Document Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          margin="normal"
-          required
-        />
+      <TextField
+        fullWidth
+        label="Document Title"
+        value={metadata.title}
+        onChange={(e) => setMetadata(prev => ({ ...prev, title: e.target.value }))}
+        margin="normal"
+        required
+      />
 
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Visibility</InputLabel>
-          <Select
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value as 'PROJECT' | 'DEPARTMENT')}
-            label="Visibility"
-          >
-            <MenuItem value="PROJECT">Project Only</MenuItem>
-            <MenuItem value="DEPARTMENT">Department(s)</MenuItem>
-          </Select>
-        </FormControl>
-
-        {visibility === 'DEPARTMENT' && (
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Departments</InputLabel>
-            <Select
-              multiple
-              value={selectedDepartments}
-              onChange={(e) => setSelectedDepartments(e.target.value as number[])}
-              label="Departments"
-              renderValue={(selected) => (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {selected.map((value) => (
-                    <Chip key={value} label={`Department ${value}`} size="small" />
-                  ))}
-                </Box>
-              )}
-            >
-              {user?.departmentIds.map((deptId) => (
-                <MenuItem key={deptId} value={deptId}>
-                  Department {deptId}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {uploading && (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" gutterBottom>
-              Uploading... {uploadProgress}%
-            </Typography>
-            <LinearProgress variant="determinate" value={uploadProgress} />
-          </Box>
-        )}
-      </DialogContent>
-      
-      <DialogActions>
-        <Button onClick={onCancel} disabled={uploading}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleUpload}
-          variant="contained"
-          disabled={!files.length || !title || uploading}
+      <FormControl fullWidth margin="normal">
+        <InputLabel>Visibility</InputLabel>
+        <Select
+          value={metadata.visibility}
+          onChange={(e) => setMetadata(prev => ({ 
+            ...prev, 
+            visibility: e.target.value as 'PROJECT' | 'DEPARTMENT' 
+          }))}
         >
-          {uploading ? 'Uploading...' : 'Upload'}
+          <MenuItem value="PROJECT">Project</MenuItem>
+          <MenuItem value="DEPARTMENT">Department</MenuItem>
+        </Select>
+      </FormControl>
+
+      <Box sx={{ mt: 2, mb: 2 }}>
+        <TextField
+          label="Add Tag"
+          value={tagInput}
+          onChange={(e) => setTagInput(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+          size="small"
+          sx={{ mr: 1 }}
+        />
+        <Button onClick={handleAddTag} variant="outlined" size="small">
+          Add Tag
         </Button>
-      </DialogActions>
-    </>
+      </Box>
+
+      <Box sx={{ mb: 2 }}>
+        {metadata.tags?.map((tag) => (
+          <Chip
+            key={tag}
+            label={tag}
+            onDelete={() => handleRemoveTag(tag)}
+            sx={{ mr: 1, mb: 1 }}
+          />
+        ))}
+      </Box>
+
+      {uploading && (
+        <Box sx={{ mb: 2 }}>
+          <LinearProgress variant="determinate" value={progress} />
+        </Box>
+      )}
+
+      <Button
+        variant="contained"
+        onClick={handleUpload}
+        disabled={!file || !metadata.title || uploading}
+        fullWidth
+      >
+        {uploading ? 'Uploading...' : 'Upload Document'}
+      </Button>
+    </Paper>
   );
 };
 

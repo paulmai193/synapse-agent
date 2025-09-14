@@ -1,255 +1,206 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
   Chip,
   IconButton,
   Menu,
   MenuItem,
   TextField,
-  InputAdornment,
-  Grid,
-  Pagination,
-  FormControl,
-  InputLabel,
-  Select,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
+  Box,
+  Typography,
 } from '@mui/material';
-import {
-  Search,
-  MoreVert,
-  Delete,
-  Edit,
-  Visibility,
-  FilterList,
-} from '@mui/icons-material';
-import { Document } from '../../types';
+import { MoreVert, FilterList } from '@mui/icons-material';
+import { documentApi } from '../../utils/documentApi';
+import { Document } from '../../types/document';
 import { useAuth } from '../../hooks/useAuth';
-import { apiClient } from '../../utils/api';
-import { API_CONFIG } from '../../config/api';
 
-interface DocumentListProps {
-  documents: Document[];
-  onDocumentsChange: (documents: Document[]) => void;
-}
-
-const DocumentList: React.FC<DocumentListProps> = ({ documents, onDocumentsChange }) => {
-  const { hasAnyRole } = useAuth();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [page, setPage] = useState(1);
+const DocumentList: React.FC = () => {
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { isAdmin } = useAuth();
 
-  const itemsPerPage = 12;
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
-
-  const fetchDocuments = async () => {
+  const loadDocuments = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await apiClient.get<Document[]>(API_CONFIG.ENDPOINTS.DOCUMENTS);
-      onDocumentsChange(response);
+      const response = await documentApi.getDocuments(page, rowsPerPage);
+      setDocuments(response.content || []);
+      setTotalCount(response.totalElements || 0);
     } catch (error) {
-      console.error('Failed to fetch documents:', error);
+      console.error('Failed to load documents:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doc.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'ALL' || doc.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    loadDocuments();
+  }, [page, rowsPerPage]);
 
-  const paginatedDocuments = filteredDocuments.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage
-  );
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, doc: Document) => {
-    setMenuAnchor(event.currentTarget);
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, doc: Document) => {
+    setAnchorEl(event.currentTarget);
     setSelectedDoc(doc);
   };
 
   const handleMenuClose = () => {
-    setMenuAnchor(null);
+    setAnchorEl(null);
     setSelectedDoc(null);
   };
 
-  const handleDelete = async () => {
-    if (!selectedDoc) return;
-
-    try {
-      await apiClient.delete(`${API_CONFIG.ENDPOINTS.DOCUMENTS}/${selectedDoc.id}`);
-      onDocumentsChange(documents.filter(doc => doc.id !== selectedDoc.id));
-      setDeleteDialogOpen(false);
-      handleMenuClose();
-    } catch (error) {
-      console.error('Failed to delete document:', error);
+  const handleStatusChange = async (status: string) => {
+    if (selectedDoc) {
+      try {
+        await documentApi.updateDocumentStatus(selectedDoc.id, status);
+        loadDocuments();
+      } catch (error) {
+        console.error('Failed to update document status:', error);
+      }
     }
+    handleMenuClose();
+  };
+
+  const handleDelete = async () => {
+    if (selectedDoc) {
+      try {
+        await documentApi.deleteDocument(selectedDoc.id);
+        loadDocuments();
+      } catch (error) {
+        console.error('Failed to delete document:', error);
+      }
+    }
+    handleMenuClose();
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return 'success';
-      case 'INACTIVE': return 'default';
+      case 'COMPLETED': return 'success';
+      case 'PROCESSING': return 'warning';
+      case 'FAILED': return 'error';
       default: return 'default';
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  if (loading) {
-    return <Typography>Loading documents...</Typography>;
-  }
+  const filteredDocuments = documents.filter(doc =>
+    doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doc.metadata.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   return (
-    <Box>
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-        <TextField
-          placeholder="Search documents..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ flexGrow: 1 }}
-        />
+    <Paper elevation={3}>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Documents
+        </Typography>
         
-        <FormControl sx={{ minWidth: 120 }}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            label="Status"
-          >
-            <MenuItem value="ALL">All</MenuItem>
-            <MenuItem value="ACTIVE">Active</MenuItem>
-            <MenuItem value="INACTIVE">Inactive</MenuItem>
-          </Select>
-        </FormControl>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <TextField
+            label="Search documents..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            size="small"
+            sx={{ flexGrow: 1 }}
+          />
+          <IconButton>
+            <FilterList />
+          </IconButton>
+        </Box>
       </Box>
 
-      {filteredDocuments.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography variant="h6" color="text.secondary">
-            No documents found
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {searchTerm ? 'Try adjusting your search terms' : 'Upload your first document to get started'}
-          </Typography>
-        </Box>
-      ) : (
-        <>
-          <Grid container spacing={2}>
-            {paginatedDocuments.map((doc) => (
-              <Grid item xs={12} sm={6} md={4} key={doc.id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                      <Typography variant="h6" component="h3" noWrap sx={{ flexGrow: 1, mr: 1 }}>
-                        {doc.title}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, doc)}
-                      >
-                        <MoreVert />
-                      </IconButton>
-                    </Box>
-                    
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                      {doc.content.substring(0, 100)}...
-                    </Typography>
-                    
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-                      <Chip
-                        label={doc.status}
-                        size="small"
-                        color={getStatusColor(doc.status) as any}
-                      />
-                      {doc.projectId && (
-                        <Chip label={`Project ${doc.projectId}`} size="small" variant="outlined" />
-                      )}
-                      {doc.departmentIds.map(deptId => (
-                        <Chip key={deptId} label={`Dept ${deptId}`} size="small" variant="outlined" />
-                      ))}
-                    </Box>
-                    
-                    <Typography variant="caption" color="text.secondary">
-                      Updated: {formatDate(doc.updatedAt)}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+      <TableContainer>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Title</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Processing</TableCell>
+              <TableCell>Visibility</TableCell>
+              <TableCell>Created</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredDocuments.map((doc) => (
+              <TableRow key={doc.id}>
+                <TableCell>{doc.title}</TableCell>
+                <TableCell>
+                  <Chip 
+                    label={doc.status} 
+                    color={doc.status === 'ACTIVE' ? 'success' : 'default'}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={doc.processingStatus} 
+                    color={getStatusColor(doc.processingStatus)}
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={doc.accessControl.visibility} 
+                    variant="outlined"
+                    size="small"
+                  />
+                </TableCell>
+                <TableCell>
+                  {new Date(doc.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  <IconButton onClick={(e) => handleMenuClick(e, doc)}>
+                    <MoreVert />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
             ))}
-          </Grid>
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
-            <Pagination
-              count={Math.ceil(filteredDocuments.length / itemsPerPage)}
-              page={page}
-              onChange={(_, newPage) => setPage(newPage)}
-            />
-          </Box>
-        </>
-      )}
+      <TablePagination
+        component="div"
+        count={totalCount}
+        page={page}
+        onPageChange={(_, newPage) => setPage(newPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
+      />
 
       <Menu
-        anchorEl={menuAnchor}
-        open={Boolean(menuAnchor)}
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
         onClose={handleMenuClose}
       >
-        <MenuItem onClick={handleMenuClose}>
-          <Visibility sx={{ mr: 1 }} />
+        <MenuItem onClick={() => console.log('View document')}>
           View
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <Edit sx={{ mr: 1 }} />
-          Edit
-        </MenuItem>
-        {hasAnyRole(['SYSTEM_ADMIN', 'PROJECT_ADMIN']) && (
-          <MenuItem onClick={() => setDeleteDialogOpen(true)}>
-            <Delete sx={{ mr: 1 }} />
-            Delete
-          </MenuItem>
+        {isAdmin() && (
+          <>
+            <MenuItem onClick={() => handleStatusChange('ACTIVE')}>
+              Activate
+            </MenuItem>
+            <MenuItem onClick={() => handleStatusChange('INACTIVE')}>
+              Deactivate
+            </MenuItem>
+            <MenuItem onClick={handleDelete}>
+              Delete
+            </MenuItem>
+          </>
         )}
       </Menu>
-
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Delete Document</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete "{selectedDoc?.title}"? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleDelete} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+    </Paper>
   );
 };
 
