@@ -185,8 +185,8 @@
 ## 7. LLM Integration and Q&A System
 
 - [ ] 7.1 Implement LLM service integration
-  - Add OpenAI Java client dependencies to synapse-data module
-  - Configure OpenAI API connection settings in application.yml with API key management
+  - Add Ollama Java client dependencies to synapse-data module
+  - Configure Ollama API connection settings in application.yml with API key management
   - Create LLMService wrapper with retry logic, rate limiting, and circuit breaker pattern
   - Implement prompt engineering templates for context-aware question answering
   - Add response post-processing and source citation functionality
