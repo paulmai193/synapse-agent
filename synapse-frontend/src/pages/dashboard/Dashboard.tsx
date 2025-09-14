@@ -68,6 +68,7 @@ const Dashboard: React.FC = () => {
                   transition: 'all 0.2s',
                 },
               }}
+              onClick={() => window.location.href = action.path}
             >
               <CardContent sx={{ textAlign: 'center', p: 3 }}>
                 <Box sx={{ color: 'primary.main', mb: 2 }}>

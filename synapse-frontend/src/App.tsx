@@ -9,6 +9,7 @@ import Register from './pages/auth/Register';
 import Profile from './pages/auth/Profile';
 import Dashboard from './pages/dashboard/Dashboard';
 import Documents from './pages/documents/Documents';
+import Search from './pages/search/Search';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 function App() {
@@ -42,7 +43,7 @@ function AppContent() {
               path="/search"
               element={
                 <ProtectedRoute>
-                  <div>Search Page - Coming Soon</div>
+                  <Search />
                 </ProtectedRoute>
               }
             />
