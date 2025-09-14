@@ -1,0 +1,1 @@
+Scan a project containing Python, ReactJS, and Java code, and generate a comprehensive .gitignore file. Include language-specific ignore rules as well as common OS and editor files (e.g., .DS_Store, .vscode, Thumbs.db).
