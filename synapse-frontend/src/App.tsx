@@ -8,6 +8,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Profile from './pages/auth/Profile';
 import Dashboard from './pages/dashboard/Dashboard';
+import Documents from './pages/documents/Documents';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 function App() {
@@ -57,7 +58,7 @@ function AppContent() {
               path="/documents"
               element={
                 <ProtectedRoute>
-                  <div>Documents Page - Coming Soon</div>
+                  <Documents />
                 </ProtectedRoute>
               }
             />
