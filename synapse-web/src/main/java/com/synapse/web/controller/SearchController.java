@@ -39,6 +39,9 @@ public class SearchController {
     @Autowired
     private AuditService auditService;
 
+    @Autowired
+    private SearchAnalyticsService searchAnalyticsService;
+
     @PostMapping
     @RequireRole("USER")
     public ResponseEntity<SearchResponse> search(@Valid @RequestBody SearchRequest request) {
@@ -50,6 +53,11 @@ public class SearchController {
             
             // Use optimized search with performance monitoring
             SearchResponse response = searchService.searchWithMetrics(request, userId);
+            
+            // Record search analytics
+            String sessionId = request.getSession(false) != null ? 
+                request.getSession().getId() : "anonymous";
+            searchAnalyticsService.recordSearchInteraction(request, response, userId, sessionId);
             
             // Log search activity with performance metrics
             auditService.logActivity(
@@ -156,6 +164,9 @@ public class SearchController {
         try {
             logger.info("Search feedback from user {}: query='{}', rating={}, responseTime={}ms", 
                 userId, request.getQuery(), request.getRating(), request.getResponseTimeMs());
+            
+            // Record search feedback in analytics
+            searchAnalyticsService.recordSearchFeedback(request, userId);
             
             // Log feedback activity with performance data
             auditService.logActivity(
@@ -293,6 +304,88 @@ public class SearchController {
         
         public void setComment(String comment) {
             this.comment = comment;
+        }
+    }
+    
+    @PostMapping("/analytics/click")
+    @RequireRole("USER")
+    public ResponseEntity<Void> recordClickedResults(@RequestBody ClickTrackingRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        
+        try {
+            logger.debug("Recording clicked results for user {}: query='{}', clicks={}", 
+                userId, request.getQuery(), request.getClickedDocumentIds().size());
+            
+            searchAnalyticsService.recordClickedResults(
+                request.getQuery(), 
+                request.getClickedDocumentIds(), 
+                userId
+            );
+            
+            return ResponseEntity.ok().build();
+            
+        } catch (Exception e) {
+            logger.error("Failed to record clicked results for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/analytics/dashboard")
+    @RequireRole("SYSTEM_ADMIN")
+    public ResponseEntity<Map<String, Object>> getAnalyticsDashboard(@RequestParam(defaultValue = "30") int days) {
+        try {
+            Map<String, Object> dashboardData = searchAnalyticsService.getAnalyticsDashboardData(days);
+            return ResponseEntity.ok(dashboardData);
+        } catch (Exception e) {
+            logger.error("Failed to get analytics dashboard: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/analytics/user-patterns")
+    @RequireRole("USER")
+    public ResponseEntity<Map<String, Object>> getUserSearchPatterns(@RequestParam(defaultValue = "30") int days) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        
+        try {
+            Map<String, Object> patterns = searchAnalyticsService.getUserSearchPatterns(userId, days);
+            return ResponseEntity.ok(patterns);
+        } catch (Exception e) {
+            logger.error("Failed to get user search patterns for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/analytics/quality-metrics")
+    @RequireRole("SYSTEM_ADMIN")
+    public ResponseEntity<Map<String, Object>> getSearchQualityMetrics() {
+        try {
+            Map<String, Object> metrics = searchAnalyticsService.getSearchQualityMetrics();
+            return ResponseEntity.ok(metrics);
+        } catch (Exception e) {
+            logger.error("Failed to get search quality metrics: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    public static class ClickTrackingRequest {
+        private String query;
+        private List<String> clickedDocumentIds;
+        
+        public String getQuery() {
+            return query;
+        }
+        
+        public void setQuery(String query) {
+            this.query = query;
+        }
+        
+        public List<String> getClickedDocumentIds() {
+            return clickedDocumentIds;
+        }
+        
+        public void setClickedDocumentIds(List<String> clickedDocumentIds) {
+            this.clickedDocumentIds = clickedDocumentIds;
         }
     }
 }
