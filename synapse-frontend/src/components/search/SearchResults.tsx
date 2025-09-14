@@ -1,165 +1,144 @@
 import React from 'react';
 import {
+  Paper,
+  Typography,
   Box,
   Card,
   CardContent,
-  Typography,
   Chip,
-  CircularProgress,
-  Button,
+  IconButton,
   Divider,
 } from '@mui/material';
-import { Visibility, ThumbUp, ThumbDown } from '@mui/icons-material';
-import { SearchResult } from '../../types';
-import { apiClient } from '../../utils/api';
-import { API_CONFIG } from '../../config/api';
+import { ThumbUp, ThumbDown, OpenInNew } from '@mui/icons-material';
+import { SearchResult, SearchResponse } from '../../types/search';
+import { searchApi } from '../../utils/searchApi';
 
 interface SearchResultsProps {
-  results: SearchResult[];
+  searchResponse: SearchResponse | null;
   loading: boolean;
-  query: string;
-  onSearch: (query: string) => void;
 }
 
-const SearchResults: React.FC<SearchResultsProps> = ({
-  results,
-  loading,
-  query,
-  onSearch,
-}) => {
-  const handleFeedback = async (documentId: string, helpful: boolean) => {
+const SearchResults: React.FC<SearchResultsProps> = ({ searchResponse, loading }) => {
+  const handleFeedback = async (result: SearchResult, feedback: 'helpful' | 'not_helpful') => {
     try {
-      await apiClient.post(`${API_CONFIG.ENDPOINTS.SEARCH}/feedback`, {
-        query,
-        documentId,
-        helpful,
-        rating: helpful ? 5 : 1,
-      });
+      await searchApi.provideFeedback('current-search', result.id, feedback);
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
+      console.error('Failed to provide feedback:', error);
     }
   };
 
-  const highlightText = (text: string, searchQuery: string) => {
-    if (!searchQuery) return text;
+  const highlightText = (text: string, highlights?: string[]) => {
+    if (!highlights || highlights.length === 0) {
+      return text.substring(0, 200) + (text.length > 200 ? '...' : '');
+    }
     
-    const regex = new RegExp(`(${searchQuery})`, 'gi');
-    const parts = text.split(regex);
+    let highlightedText = text;
+    highlights.forEach(highlight => {
+      const regex = new RegExp(`(${highlight})`, 'gi');
+      highlightedText = highlightedText.replace(regex, '<mark>$1</mark>');
+    });
     
-    return parts.map((part, index) =>
-      regex.test(part) ? (
-        <mark key={index} style={{ backgroundColor: '#ffeb3b', padding: '0 2px' }}>
-          {part}
-        </mark>
-      ) : (
-        part
-      )
-    );
-  };
-
-  const formatRelevanceScore = (score: number) => {
-    return Math.round(score * 100);
+    return highlightedText.substring(0, 300) + (highlightedText.length > 300 ? '...' : '');
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress />
-      </Box>
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <Typography>Searching...</Typography>
+      </Paper>
     );
   }
 
-  if (!query) {
+  if (!searchResponse) {
     return (
-      <Box sx={{ textAlign: 'center', py: 4 }}>
-        <Typography variant="h6" color="text.secondary">
-          Enter a search query to find documents
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <Typography color="text.secondary">
+          Enter a search query to find relevant documents
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          Search across all your documents in multiple languages
-        </Typography>
-      </Box>
+      </Paper>
     );
   }
 
-  if (results.length === 0) {
+  if (searchResponse.results.length === 0) {
     return (
-      <Box sx={{ textAlign: 'center', py: 4 }}>
-        <Typography variant="h6" color="text.secondary">
-          No results found for "{query}"
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+      <Paper sx={{ p: 3, textAlign: 'center' }}>
+        <Typography>No results found for "{searchResponse.query}"</Typography>
+        <Typography color="text.secondary" sx={{ mt: 1 }}>
           Try different keywords or check your spelling
         </Typography>
-        <Box sx={{ mt: 2 }}>
-          <Button onClick={() => onSearch('*')} variant="outlined" size="small">
-            Browse All Documents
-          </Button>
-        </Box>
-      </Box>
+      </Paper>
     );
   }
 
   return (
     <Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Found {results.length} results for "{query}"
-      </Typography>
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Found {searchResponse.totalCount} results for "{searchResponse.query}" 
+          in {searchResponse.processingTime}ms
+        </Typography>
+      </Paper>
 
-      {results.map((result, index) => (
-        <Card key={`${result.documentId}-${index}`} sx={{ mb: 2 }}>
+      {searchResponse.results.map((result, index) => (
+        <Card key={result.id} sx={{ mb: 2 }}>
           <CardContent>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-              <Typography variant="h6" component="h3" sx={{ flexGrow: 1 }}>
-                {highlightText(result.title, query)}
+              <Typography variant="h6" component="h3">
+                {result.title}
               </Typography>
-              <Chip
-                label={`${formatRelevanceScore(result.relevanceScore)}% match`}
-                size="small"
-                color="primary"
-                variant="outlined"
-              />
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Chip 
+                  label={`Score: ${result.score.toFixed(2)}`} 
+                  size="small" 
+                  color="primary" 
+                />
+                <Chip 
+                  label={result.language.toUpperCase()} 
+                  size="small" 
+                  variant="outlined" 
+                />
+              </Box>
             </Box>
 
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {highlightText(result.content, query)}
-            </Typography>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <Chip label={result.source} size="small" variant="outlined" />
-              {result.documentId && (
-                <Typography variant="caption" color="text.secondary">
-                  Document ID: {result.documentId}
-                </Typography>
-              )}
-            </Box>
-
-            <Divider sx={{ my: 1 }} />
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ mb: 2 }}
+              dangerouslySetInnerHTML={{ 
+                __html: highlightText(result.content, result.highlights) 
+              }}
+            />
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Button
-                startIcon={<Visibility />}
-                size="small"
-                variant="outlined"
-              >
-                View Document
-              </Button>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Chip label={result.source} size="small" variant="outlined" />
+                <Typography variant="caption" color="text.secondary">
+                  {new Date(result.createdAt).toLocaleDateString()}
+                </Typography>
+              </Box>
 
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button
-                  startIcon={<ThumbUp />}
-                  size="small"
-                  onClick={() => handleFeedback(result.documentId, true)}
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleFeedback(result, 'helpful')}
+                  title="Helpful"
                 >
-                  Helpful
-                </Button>
-                <Button
-                  startIcon={<ThumbDown />}
-                  size="small"
-                  onClick={() => handleFeedback(result.documentId, false)}
+                  <ThumbUp fontSize="small" />
+                </IconButton>
+                <IconButton 
+                  size="small" 
+                  onClick={() => handleFeedback(result, 'not_helpful')}
+                  title="Not helpful"
                 >
-                  Not Helpful
-                </Button>
+                  <ThumbDown fontSize="small" />
+                </IconButton>
+                <IconButton 
+                  size="small" 
+                  onClick={() => window.open(`/documents/${result.documentId}`, '_blank')}
+                  title="Open document"
+                >
+                  <OpenInNew fontSize="small" />
+                </IconButton>
               </Box>
             </Box>
           </CardContent>

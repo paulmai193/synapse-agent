@@ -1,130 +1,150 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Box,
   Paper,
   Typography,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Chip,
+  Checkbox,
+  ListItemText,
   TextField,
+  Box,
   Button,
+  Collapse,
 } from '@mui/material';
-import { FilterList, Clear } from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { SearchFilters as SearchFiltersType } from '../../types/search';
 
 interface SearchFiltersProps {
-  filters: {
-    language: string;
-    source: string;
-    dateRange: string;
-    documentType?: string;
-  };
-  onFiltersChange: (filters: any) => void;
-  onClearFilters: () => void;
+  filters: SearchFiltersType;
+  onFiltersChange: (filters: SearchFiltersType) => void;
+  open: boolean;
 }
 
-const SearchFilters: React.FC<SearchFiltersProps> = ({
-  filters,
-  onFiltersChange,
-  onClearFilters,
-}) => {
-  const handleFilterChange = (key: string, value: string) => {
-    onFiltersChange({
-      ...filters,
-      [key]: value,
-    });
+const SearchFilters: React.FC<SearchFiltersProps> = ({ filters, onFiltersChange, open }) => {
+  const [localFilters, setLocalFilters] = useState<SearchFiltersType>(filters);
+
+  const documentTypes = ['PDF', 'DOCX', 'TXT', 'HTML'];
+  const sources = ['Upload', 'Confluence', 'GitHub', 'GitLab'];
+  const languages = ['English', 'Vietnamese', 'Japanese', 'Chinese', 'Korean'];
+
+  const handleFilterChange = (key: keyof SearchFiltersType, value: any) => {
+    const newFilters = { ...localFilters, [key]: value };
+    setLocalFilters(newFilters);
   };
 
-  const getActiveFiltersCount = () => {
-    return Object.values(filters).filter(value => value !== 'all' && value !== '').length;
+  const handleApplyFilters = () => {
+    onFiltersChange(localFilters);
+  };
+
+  const handleClearFilters = () => {
+    const emptyFilters: SearchFiltersType = {};
+    setLocalFilters(emptyFilters);
+    onFiltersChange(emptyFilters);
   };
 
   return (
-    <Paper sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <FilterList />
-          Filters
-          {getActiveFiltersCount() > 0 && (
-            <Chip label={getActiveFiltersCount()} size="small" color="primary" />
-          )}
+    <Collapse in={open}>
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Search Filters
         </Typography>
-        {getActiveFiltersCount() > 0 && (
-          <Button
-            startIcon={<Clear />}
-            size="small"
-            onClick={onClearFilters}
-          >
-            Clear
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mb: 3 }}>
+          <FormControl>
+            <InputLabel>Document Types</InputLabel>
+            <Select
+              multiple
+              value={localFilters.documentTypes || []}
+              onChange={(e) => handleFilterChange('documentTypes', e.target.value)}
+              renderValue={(selected) => (selected as string[]).join(', ')}
+            >
+              {documentTypes.map((type) => (
+                <MenuItem key={type} value={type}>
+                  <Checkbox checked={(localFilters.documentTypes || []).includes(type)} />
+                  <ListItemText primary={type} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl>
+            <InputLabel>Sources</InputLabel>
+            <Select
+              multiple
+              value={localFilters.sources || []}
+              onChange={(e) => handleFilterChange('sources', e.target.value)}
+              renderValue={(selected) => (selected as string[]).join(', ')}
+            >
+              {sources.map((source) => (
+                <MenuItem key={source} value={source}>
+                  <Checkbox checked={(localFilters.sources || []).includes(source)} />
+                  <ListItemText primary={source} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl>
+            <InputLabel>Languages</InputLabel>
+            <Select
+              multiple
+              value={localFilters.languages || []}
+              onChange={(e) => handleFilterChange('languages', e.target.value)}
+              renderValue={(selected) => (selected as string[]).join(', ')}
+            >
+              {languages.map((language) => (
+                <MenuItem key={language} value={language}>
+                  <Checkbox checked={(localFilters.languages || []).includes(language)} />
+                  <ListItemText primary={language} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <DatePicker
+              label="Start Date"
+              value={localFilters.dateRange?.start ? new Date(localFilters.dateRange.start) : null}
+              onChange={(date) => {
+                const dateRange = localFilters.dateRange || { start: '', end: '' };
+                handleFilterChange('dateRange', {
+                  ...dateRange,
+                  start: date ? date.toISOString() : ''
+                });
+              }}
+              renderInput={(params) => <TextField {...params} />}
+            />
+            <DatePicker
+              label="End Date"
+              value={localFilters.dateRange?.end ? new Date(localFilters.dateRange.end) : null}
+              onChange={(date) => {
+                const dateRange = localFilters.dateRange || { start: '', end: '' };
+                handleFilterChange('dateRange', {
+                  ...dateRange,
+                  end: date ? date.toISOString() : ''
+                });
+              }}
+              renderInput={(params) => <TextField {...params} />}
+            />
+          </Box>
+        </LocalizationProvider>
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button variant="contained" onClick={handleApplyFilters}>
+            Apply Filters
           </Button>
-        )}
-      </Box>
-
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <FormControl fullWidth size="small">
-          <InputLabel>Language</InputLabel>
-          <Select
-            value={filters.language}
-            onChange={(e) => handleFilterChange('language', e.target.value)}
-            label="Language"
-          >
-            <MenuItem value="all">All Languages</MenuItem>
-            <MenuItem value="en">English</MenuItem>
-            <MenuItem value="vi">Vietnamese</MenuItem>
-            <MenuItem value="ja">Japanese</MenuItem>
-            <MenuItem value="zh">Chinese</MenuItem>
-            <MenuItem value="ko">Korean</MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl fullWidth size="small">
-          <InputLabel>Source</InputLabel>
-          <Select
-            value={filters.source}
-            onChange={(e) => handleFilterChange('source', e.target.value)}
-            label="Source"
-          >
-            <MenuItem value="all">All Sources</MenuItem>
-            <MenuItem value="upload">Uploaded Documents</MenuItem>
-            <MenuItem value="confluence">Confluence</MenuItem>
-            <MenuItem value="repository">Git Repository</MenuItem>
-            <MenuItem value="email">Email</MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl fullWidth size="small">
-          <InputLabel>Date Range</InputLabel>
-          <Select
-            value={filters.dateRange}
-            onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-            label="Date Range"
-          >
-            <MenuItem value="all">All Time</MenuItem>
-            <MenuItem value="today">Today</MenuItem>
-            <MenuItem value="week">This Week</MenuItem>
-            <MenuItem value="month">This Month</MenuItem>
-            <MenuItem value="quarter">This Quarter</MenuItem>
-            <MenuItem value="year">This Year</MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl fullWidth size="small">
-          <InputLabel>Document Type</InputLabel>
-          <Select
-            value={filters.documentType || 'all'}
-            onChange={(e) => handleFilterChange('documentType', e.target.value)}
-            label="Document Type"
-          >
-            <MenuItem value="all">All Types</MenuItem>
-            <MenuItem value="pdf">PDF</MenuItem>
-            <MenuItem value="docx">Word Document</MenuItem>
-            <MenuItem value="txt">Text File</MenuItem>
-            <MenuItem value="md">Markdown</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
-    </Paper>
+          <Button variant="outlined" onClick={handleClearFilters}>
+            Clear All
+          </Button>
+        </Box>
+      </Paper>
+    </Collapse>
   );
 };
 

@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Documents from './pages/Documents';
+import Search from './pages/Search';
 
 const theme = createTheme({
   palette: {
@@ -53,7 +54,7 @@ const AppContent: React.FC = () => {
             path="search" 
             element={
               <ProtectedRoute>
-                <div>Search Page (Coming Soon)</div>
+                <Search />
               </ProtectedRoute>
             } 
           />
