@@ -14,6 +14,7 @@ import { QA } from './pages/QA';
 import { UserManagement } from './pages/admin/UserManagement';
 import { ProjectManagement } from './pages/admin/ProjectManagement';
 import { DepartmentManagement } from './pages/admin/DepartmentManagement';
+import { AuditDashboard } from './pages/admin/AuditDashboard';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 function App() {
@@ -88,6 +89,14 @@ function AppContent() {
               element={
                 <ProtectedRoute roles={['SYSTEM_ADMIN', 'DEPARTMENT_ADMIN']}>
                   <DepartmentManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/audit"
+              element={
+                <ProtectedRoute roles={['SYSTEM_ADMIN']}>
+                  <AuditDashboard />
                 </ProtectedRoute>
               }
             />

@@ -5,6 +5,7 @@ import qaSlice from './slices/qaSlice';
 import userSlice from './slices/userSlice';
 import projectSlice from './slices/projectSlice';
 import departmentSlice from './slices/departmentSlice';
+import auditSlice from './slices/auditSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +15,7 @@ export const store = configureStore({
     users: userSlice,
     projects: projectSlice,
     departments: departmentSlice,
+    audit: auditSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
