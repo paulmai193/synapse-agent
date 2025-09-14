@@ -12,6 +12,8 @@ import Documents from './pages/documents/Documents';
 import Search from './pages/search/Search';
 import { QA } from './pages/QA';
 import { UserManagement } from './pages/admin/UserManagement';
+import { ProjectManagement } from './pages/admin/ProjectManagement';
+import { DepartmentManagement } from './pages/admin/DepartmentManagement';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 function App() {
@@ -70,6 +72,22 @@ function AppContent() {
               element={
                 <ProtectedRoute roles={['SYSTEM_ADMIN', 'PROJECT_ADMIN', 'DEPARTMENT_ADMIN']}>
                   <UserManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/projects"
+              element={
+                <ProtectedRoute roles={['SYSTEM_ADMIN', 'PROJECT_ADMIN']}>
+                  <ProjectManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/departments"
+              element={
+                <ProtectedRoute roles={['SYSTEM_ADMIN', 'DEPARTMENT_ADMIN']}>
+                  <DepartmentManagement />
                 </ProtectedRoute>
               }
             />
