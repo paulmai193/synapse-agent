@@ -23,8 +23,8 @@ spring:
     password: synapse_pass
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      maximum-pool-size: 25
+      minimum-idle: 8
       connection-timeout: 20000
       idle-timeout: 300000
       max-lifetime: 1200000
@@ -33,28 +33,44 @@ spring:
       auto-commit: false
       connection-test-query: SELECT 1
       validation-timeout: 5000
+      # Additional optimization settings
+      cache-prep-stmts: true
+      prep-stmt-cache-size: 250
+      prep-stmt-cache-sql-limit: 2048
+      use-server-prep-stmts: true
+      register-mbeans: true
 
   data:
     mongodb:
       uri: mongodb://localhost:27017/synapse_docs
       # MongoDB connection pooling optimization
       options:
-        max-connection-pool-size: 50
-        min-connection-pool-size: 5
+        max-connection-pool-size: 60
+        min-connection-pool-size: 8
         max-connection-idle-time: 300000
         max-connection-life-time: 1200000
         connect-timeout: 10000
         socket-timeout: 30000
+        # Additional MongoDB optimization
+        max-wait-time: 10000
+        server-selection-timeout: 5000
+        heartbeat-frequency: 10000
     redis:
       host: localhost
       port: 6379
       timeout: 2000ms
       lettuce:
         pool:
-          max-active: 20
-          max-idle: 10
-          min-idle: 2
+          max-active: 30
+          max-idle: 15
+          min-idle: 5
           max-wait: 2000ms
+        shutdown-timeout: 100ms
+        # Connection optimization
+        cluster:
+          refresh:
+            adaptive: true
+            period: 30s
 
   jpa:
     hibernate:
@@ -79,10 +95,24 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when-authorized
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    # Performance monitoring
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+      sla:
+        http.server.requests: 1s,3s,5s
 
 logging:
   level:
@@ -98,11 +128,22 @@ synapse:
   nlp:
     service:
       url: http://localhost:8001
+      timeout: 15000 # 15 seconds
+      connection-pool-size: 10
   vector:
     database:
       url: http://localhost:6333
       collection-name: synapse_embeddings
       vector-size: 384
+      # HNSW optimization parameters
+      hnsw:
+        ef-construct: 200
+        m: 16
+        ef: 128
+      # Search optimization
+      search:
+        exact: false
+        rescore: true
   llm:
     ollama:
       url: http://localhost:11434
@@ -124,11 +165,25 @@ synapse:
     upload:
       max-file-size: 100MB
       allowed-types: pdf,docx,txt,md
+      # Processing optimization
+      batch-size: 10
+      parallel-processing: true
+  search:
+    max-results: 100
+    relevance-threshold: 0.5
+    # Performance targets
+    response-time-target: 3000 # 3 seconds
+    cache-warm-queries: 50
   cache:
     ttl:
       user-permissions: 3600 # 1 hour
       search-results: 1800 # 30 minutes
       embeddings: 86400 # 24 hours
+      user-access: 3600 # 1 hour
+      query-results: 900 # 15 minutes
+    # Cache optimization
+    max-size: 10000
+    eviction-policy: LRU
 
 ---
 spring:

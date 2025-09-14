@@ -9,6 +9,10 @@ public class SearchResponse {
     private int totalResults;
     private long searchTimeMs;
     private String language;
+    private String cursor; // Next cursor for pagination
+    private boolean hasMore; // Whether there are more results
+    private int offset;
+    private int limit;
 
     public SearchResponse() {}
 
@@ -57,5 +61,37 @@ public class SearchResponse {
 
     public void setLanguage(String language) {
         this.language = language;
+    }
+    
+    public String getCursor() {
+        return cursor;
+    }
+
+    public void setCursor(String cursor) {
+        this.cursor = cursor;
+    }
+    
+    public boolean isHasMore() {
+        return hasMore;
+    }
+
+    public void setHasMore(boolean hasMore) {
+        this.hasMore = hasMore;
+    }
+    
+    public int getOffset() {
+        return offset;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
+    }
+    
+    public int getLimit() {
+        return limit;
+    }
+
+    public void setLimit(int limit) {
+        this.limit = limit;
     }
 }

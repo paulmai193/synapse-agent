@@ -182,6 +182,77 @@ public class SearchService {
 
     private SearchResponse createEmptyResponse(SearchRequest request, long startTime) {
         long searchTime = System.currentTimeMillis() - startTime;
-        return new SearchResponse(request.getQuery(), Collections.emptyList(), 0, searchTime);
+        SearchResponse response = new SearchResponse(request.getQuery(), Collections.emptyList(), 0, searchTime);
+        response.setLanguage(request.getLanguage());
+        return response;
+    }
+    
+    private String generateSearchCacheKey(SearchRequest request, Long userId) {
+        return String.format("search:%d:%s:%d:%d:%s", 
+            userId, 
+            request.getQuery().hashCode(), 
+            request.getLimit(), 
+            request.getOffset(),
+            request.getLanguage());
+    }
+    
+    private SearchResponse getCachedSearchResponse(String cacheKey) {
+        return (SearchResponse) cacheService.getCachedQueryResult(cacheKey);
+    }
+    
+    private void cacheSearchResponse(String cacheKey, SearchResponse response) {
+        cacheService.optimizeQueryCache(cacheKey, response);
+    }
+    
+    private String generateNextCursor(List<SearchResult> results, SearchRequest request) {
+        if (results.size() < request.getLimit()) {
+            return null; // No more results
+        }
+        
+        // Generate cursor based on last result's score and ID for consistent pagination
+        SearchResult lastResult = results.get(results.size() - 1);
+        return Base64.getEncoder().encodeToString(
+            (lastResult.getRelevanceScore() + ":" + lastResult.getDocumentId()).getBytes()
+        );
+    }
+    
+    @Async
+    public CompletableFuture<Void> preloadSearchCache(String query, Long userId) {
+        logger.debug("Preloading search cache for query: {}", query);
+        try {
+            SearchRequest request = new SearchRequest();
+            request.setQuery(query);
+            request.setLimit(20);
+            search(request, userId);
+        } catch (Exception e) {
+            logger.warn("Failed to preload search cache: {}", e.getMessage());
+        }
+        return CompletableFuture.completedFuture(null);
+    }
+    
+    /**
+     * Optimized search with performance monitoring
+     */
+    public SearchResponse searchWithMetrics(SearchRequest request, Long userId) {
+        long startTime = System.nanoTime();
+        
+        SearchResponse response = search(request, userId);
+        
+        long endTime = System.nanoTime();
+        long durationMs = (endTime - startTime) / 1_000_000;
+        
+        // Log performance metrics
+        logger.info("Search performance: query='{}', results={}, duration={}ms, cached={}", 
+            request.getQuery(), 
+            response.getResults().size(), 
+            durationMs,
+            durationMs < 100 ? "likely" : "unlikely");
+            
+        // Alert if search takes too long
+        if (durationMs > 3000) {
+            logger.warn("Slow search detected: {}ms for query '{}'", durationMs, request.getQuery());
+        }
+        
+        return response;
     }
 }

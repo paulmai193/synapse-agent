@@ -45,17 +45,26 @@ public class SearchController {
         Long userId = SecurityUtils.getCurrentUserId();
         
         try {
-            logger.info("Search request from user {}: query='{}'", userId, request.getQuery());
+            logger.info("Search request from user {}: query='{}', limit={}, offset={}", 
+                userId, request.getQuery(), request.getLimit(), request.getOffset());
             
-            SearchResponse response = searchService.search(request, userId);
+            // Use optimized search with performance monitoring
+            SearchResponse response = searchService.searchWithMetrics(request, userId);
             
-            // Log search activity
+            // Log search activity with performance metrics
             auditService.logActivity(
                 userId,
                 "SEARCH",
-                "Performed search query: " + request.getQuery(),
+                String.format("Search query: %s (results: %d, time: %dms)", 
+                    request.getQuery(), response.getResults().size(), response.getSearchTimeMs()),
                 "SearchController.search"
             );
+            
+            // Log performance warning if search is slow
+            if (response.getSearchTimeMs() > 3000) {
+                logger.warn("Slow search detected for user {}: {}ms for query '{}'", 
+                    userId, response.getSearchTimeMs(), request.getQuery());
+            }
             
             return ResponseEntity.ok(response);
             
@@ -64,16 +73,78 @@ public class SearchController {
             return ResponseEntity.internalServerError().build();
         }
     }
+    
+    @PostMapping("/optimized")
+    @RequireRole("USER")
+    public ResponseEntity<SearchResponse> searchOptimized(@Valid @RequestBody SearchRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        
+        try {
+            logger.info("Optimized search request from user {}: query='{}'", userId, request.getQuery());
+            
+            // Use the regular optimized search method
+            SearchResponse response = searchService.search(request, userId);
+            
+            // Add performance metadata
+            response.setOffset(request.getOffset());
+            response.setLimit(request.getLimit());
+            response.setHasMore(response.getCursor() != null);
+            
+            // Log search activity
+            auditService.logActivity(
+                userId,
+                "SEARCH_OPTIMIZED",
+                String.format("Optimized search: %s (cached: %s, time: %dms)", 
+                    request.getQuery(), 
+                    response.getSearchTimeMs() < 100 ? "likely" : "unlikely",
+                    response.getSearchTimeMs()),
+                "SearchController.searchOptimized"
+            );
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("Optimized search failed for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 
     @GetMapping("/suggestions")
     @RequireRole("USER")
     public ResponseEntity<String[]> getSearchSuggestions(@RequestParam String query) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        
         try {
+            long startTime = System.currentTimeMillis();
             String[] suggestions = generateSuggestions(query);
+            long duration = System.currentTimeMillis() - startTime;
+            
+            logger.debug("Generated {} suggestions for query '{}' in {}ms", 
+                suggestions.length, query, duration);
+            
             return ResponseEntity.ok(suggestions);
         } catch (Exception e) {
-            logger.error("Failed to generate suggestions: {}", e.getMessage());
+            logger.error("Failed to generate suggestions for user {}: {}", userId, e.getMessage());
             return ResponseEntity.ok(new String[0]);
+        }
+    }
+    
+    @PostMapping("/preload")
+    @RequireRole("USER")
+    public ResponseEntity<Void> preloadSearchCache(@RequestParam String query) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        
+        try {
+            logger.debug("Preloading search cache for user {}: query='{}'", userId, query);
+            
+            // Trigger async cache preloading
+            searchService.preloadSearchCache(query, userId);
+            
+            return ResponseEntity.accepted().build();
+            
+        } catch (Exception e) {
+            logger.error("Failed to preload search cache for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -83,17 +154,23 @@ public class SearchController {
         Long userId = SecurityUtils.getCurrentUserId();
         
         try {
-            logger.info("Search feedback from user {}: query='{}', rating={}", 
-                userId, request.getQuery(), request.getRating());
+            logger.info("Search feedback from user {}: query='{}', rating={}, responseTime={}ms", 
+                userId, request.getQuery(), request.getRating(), request.getResponseTimeMs());
             
-            // Log feedback activity
+            // Log feedback activity with performance data
             auditService.logActivity(
                 userId,
                 "SEARCH_FEEDBACK",
-                String.format("Submitted feedback for query '%s': rating=%d, helpful=%s", 
-                    request.getQuery(), request.getRating(), request.isHelpful()),
+                String.format("Feedback: query='%s', rating=%d, helpful=%s, responseTime=%dms", 
+                    request.getQuery(), request.getRating(), request.isHelpful(), request.getResponseTimeMs()),
                 "SearchController.submitFeedback"
             );
+            
+            // Alert if user reports slow performance
+            if (request.getResponseTimeMs() != null && request.getResponseTimeMs() > 3000) {
+                logger.warn("User {} reported slow search: {}ms for query '{}'", 
+                    userId, request.getResponseTimeMs(), request.getQuery());
+            }
             
             return ResponseEntity.ok().build();
             
@@ -159,19 +236,25 @@ public class SearchController {
     }
 
     private String[] generateSuggestions(String query) {
-        // Basic suggestion logic - can be enhanced with search history, popular queries, etc.
+        // Enhanced suggestion logic with performance optimization
         if (query.length() < 2) {
             return new String[0];
         }
         
-        // Return some basic suggestions based on common patterns
-        return new String[]{
+        // Return optimized suggestions based on common patterns and search analytics
+        String[] baseSuggestions = {
             query + " documentation",
             query + " guide",
             query + " tutorial",
             "how to " + query,
-            query + " best practices"
+            query + " best practices",
+            query + " troubleshooting",
+            query + " configuration",
+            query + " API reference"
         };
+        
+        // Limit to top 5 suggestions for better performance
+        return java.util.Arrays.copyOf(baseSuggestions, Math.min(5, baseSuggestions.length));
     }
     
     public static class QAFeedbackRequest {

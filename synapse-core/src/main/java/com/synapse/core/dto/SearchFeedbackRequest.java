@@ -18,6 +18,8 @@ public class SearchFeedbackRequest {
     
     private String feedback;
     private boolean helpful;
+    private Long responseTimeMs; // Track response time for performance monitoring
+    private String searchType; // "cached" or "fresh" to track cache effectiveness
 
     public String getQuery() {
         return query;
@@ -57,5 +59,21 @@ public class SearchFeedbackRequest {
 
     public void setHelpful(boolean helpful) {
         this.helpful = helpful;
+    }
+    
+    public Long getResponseTimeMs() {
+        return responseTimeMs;
+    }
+
+    public void setResponseTimeMs(Long responseTimeMs) {
+        this.responseTimeMs = responseTimeMs;
+    }
+    
+    public String getSearchType() {
+        return searchType;
+    }
+
+    public void setSearchType(String searchType) {
+        this.searchType = searchType;
     }
 }

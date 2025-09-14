@@ -13,9 +13,15 @@ public class SearchRequest {
     @Max(value = 100, message = "Limit cannot exceed 100")
     private int limit = 10;
     
+    @Min(value = 0, message = "Offset cannot be negative")
+    private int offset = 0;
+    
+    private String cursor; // For cursor-based pagination
     private String language;
     private Long projectId;
     private Long departmentId;
+    private String sortBy = "relevance"; // relevance, date, title
+    private String sortOrder = "desc"; // asc, desc
 
     public String getQuery() {
         return query;
@@ -55,5 +61,37 @@ public class SearchRequest {
 
     public void setDepartmentId(Long departmentId) {
         this.departmentId = departmentId;
+    }
+    
+    public int getOffset() {
+        return offset;
+    }
+
+    public void setOffset(int offset) {
+        this.offset = offset;
+    }
+    
+    public String getCursor() {
+        return cursor;
+    }
+
+    public void setCursor(String cursor) {
+        this.cursor = cursor;
+    }
+    
+    public String getSortBy() {
+        return sortBy;
+    }
+
+    public void setSortBy(String sortBy) {
+        this.sortBy = sortBy;
+    }
+    
+    public String getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(String sortOrder) {
+        this.sortOrder = sortOrder;
     }
 }

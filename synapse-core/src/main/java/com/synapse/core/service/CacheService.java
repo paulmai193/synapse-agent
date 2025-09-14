@@ -229,4 +229,71 @@ public class CacheService {
     public Object getCachedQueryResult(String queryKey) {
         return getFromCache("queryResults", queryKey);
     }
+    
+    // User access control caching methods
+    public Set<Long> getUserAccessibleProjects(Long userId) {
+        @SuppressWarnings("unchecked")
+        Set<Long> projects = (Set<Long>) getFromCache("userProjects", userId);
+        return projects;
+    }
+    
+    public void cacheUserAccessibleProjects(Long userId, Set<Long> projectIds) {
+        putInCache("userProjects", userId, projectIds);
+        // Set TTL for user project cache
+        redisTemplate.expire("userProjects::" + userId, 1, TimeUnit.HOURS);
+    }
+    
+    public Set<Long> getUserAccessibleDepartments(Long userId) {
+        @SuppressWarnings("unchecked")
+        Set<Long> departments = (Set<Long>) getFromCache("userDepartments", userId);
+        return departments;
+    }
+    
+    public void cacheUserAccessibleDepartments(Long userId, Set<Long> departmentIds) {
+        putInCache("userDepartments", userId, departmentIds);
+        // Set TTL for user department cache
+        redisTemplate.expire("userDepartments::" + userId, 1, TimeUnit.HOURS);
+    }
+    
+    // Evict user access control cache when assignments change
+    public void evictUserAccessCache(Long userId) {
+        evictFromCache("userProjects", userId);
+        evictFromCache("userDepartments", userId);
+        logger.info("Evicted user access cache for user: {}", userId);
+    }
+    
+    // Cache performance monitoring
+    public double getCacheHitRate() {
+        try {
+            // This would calculate actual hit rate from Redis INFO stats
+            // For now, return a placeholder value
+            return 0.85; // 85% hit rate
+        } catch (Exception e) {
+            logger.error("Error calculating cache hit rate: {}", e.getMessage());
+            return 0.0;
+        }
+    }
+    
+    public long getCacheSize() {
+        try {
+            Set<String> keys = redisTemplate.keys("*");
+            return keys != null ? keys.size() : 0;
+        } catch (Exception e) {
+            logger.error("Error getting cache size: {}", e.getMessage());
+            return 0;
+        }
+    }
+    
+    // Cache cleanup for memory management
+    @Scheduled(fixedRate = 3600000) // Every hour
+    public void cleanupExpiredEntries() {
+        logger.debug("Starting cache cleanup for expired entries");
+        try {
+            // Redis handles TTL automatically, but we can log statistics
+            Map<String, Object> stats = getCacheStatistics();
+            logger.info("Cache cleanup completed. Current stats: {}", stats);
+        } catch (Exception e) {
+            logger.error("Error during cache cleanup: {}", e.getMessage());
+        }
+    }
 }

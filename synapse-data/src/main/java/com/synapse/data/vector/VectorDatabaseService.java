@@ -95,14 +95,18 @@ public class VectorDatabaseService {
      */
     public List<VectorSearchResult> searchSimilar(List<Float> queryVector, int limit, Map<String, Object> filter) {
         try {
-            var searchPoints = SearchPoints.newBuilder()
+            var searchPointsBuilder = SearchPoints.newBuilder()
                     .setCollectionName(collectionName)
                     .addAllVector(queryVector)
                     .setLimit(limit)
-                    .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build())
-                    .build();
+                    .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build());
 
-            var searchResult = qdrantClient.searchAsync(searchPoints).get();
+            // Add filter if provided
+            if (filter != null && !filter.isEmpty()) {
+                searchPointsBuilder.setFilter(buildFilter(filter));
+            }
+
+            var searchResult = qdrantClient.searchAsync(searchPointsBuilder.build()).get();
 
             return searchResult.getResultList().stream()
                     .map(this::convertToSearchResult)
@@ -110,6 +114,38 @@ public class VectorDatabaseService {
         } catch (Exception e) {
             logger.error("Vector search failed: {}", e.getMessage());
             throw new RuntimeException("Vector search failed", e);
+        }
+    }
+    
+    /**
+     * Optimized search with HNSW parameters for better performance.
+     */
+    public List<VectorSearchResult> searchSimilarOptimized(List<Float> queryVector, int limit, Map<String, Object> filter) {
+        try {
+            var searchPointsBuilder = SearchPoints.newBuilder()
+                    .setCollectionName(collectionName)
+                    .addAllVector(queryVector)
+                    .setLimit(limit)
+                    .setWithPayload(WithPayloadSelector.newBuilder().setEnable(true).build())
+                    .setParams(SearchParams.newBuilder()
+                        .setHnswEf(128) // Higher ef for better recall
+                        .setExact(false) // Use approximate search for speed
+                        .build());
+
+            // Add optimized filter
+            if (filter != null && !filter.isEmpty()) {
+                searchPointsBuilder.setFilter(buildOptimizedFilter(filter));
+            }
+
+            var searchResult = qdrantClient.searchAsync(searchPointsBuilder.build()).get();
+
+            return searchResult.getResultList().stream()
+                    .map(this::convertToSearchResult)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.error("Optimized vector search failed: {}", e.getMessage());
+            // Fallback to regular search
+            return searchSimilar(queryVector, limit, filter);
         }
     }
 
@@ -154,6 +190,95 @@ public class VectorDatabaseService {
         return result;
     }
 
+    private Filter buildFilter(Map<String, Object> filterMap) {
+        var filterBuilder = Filter.newBuilder();
+        
+        for (Map.Entry<String, Object> entry : filterMap.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            
+            if (value instanceof Collection) {
+                // Handle collection filters (e.g., project_ids, department_ids)
+                @SuppressWarnings("unchecked")
+                Collection<Object> values = (Collection<Object>) value;
+                if (!values.isEmpty()) {
+                    var condition = Condition.newBuilder()
+                        .setField(FieldCondition.newBuilder()
+                            .setKey(key)
+                            .setMatch(Match.newBuilder()
+                                .setAnyOf(MatchAny.newBuilder()
+                                    .addAllAny(values.stream()
+                                        .map(v -> io.qdrant.client.grpc.Points.Value.newBuilder()
+                                            .setStringValue(v.toString()).build())
+                                        .collect(Collectors.toList()))
+                                    .build())
+                                .build())
+                            .build())
+                        .build();
+                    filterBuilder.addShould(condition);
+                }
+            }
+        }
+        
+        return filterBuilder.build();
+    }
+    
+    private Filter buildOptimizedFilter(Map<String, Object> filterMap) {
+        // Build more efficient filter with proper indexing hints
+        var filterBuilder = Filter.newBuilder();
+        
+        // Add status filter first (most selective)
+        filterBuilder.addMust(Condition.newBuilder()
+            .setField(FieldCondition.newBuilder()
+                .setKey("status")
+                .setMatch(Match.newBuilder()
+                    .setValue(io.qdrant.client.grpc.Points.Value.newBuilder()
+                        .setStringValue("ACTIVE").build())
+                    .build())
+                .build())
+            .build());
+            
+        // Add deleted filter
+        filterBuilder.addMust(Condition.newBuilder()
+            .setField(FieldCondition.newBuilder()
+                .setKey("deleted")
+                .setMatch(Match.newBuilder()
+                    .setValue(io.qdrant.client.grpc.Points.Value.newBuilder()
+                        .setBoolValue(false).build())
+                    .build())
+                .build())
+            .build());
+        
+        // Add access control filters
+        for (Map.Entry<String, Object> entry : filterMap.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            
+            if (value instanceof Collection) {
+                @SuppressWarnings("unchecked")
+                Collection<Object> values = (Collection<Object>) value;
+                if (!values.isEmpty()) {
+                    var condition = Condition.newBuilder()
+                        .setField(FieldCondition.newBuilder()
+                            .setKey(key)
+                            .setMatch(Match.newBuilder()
+                                .setAnyOf(MatchAny.newBuilder()
+                                    .addAllAny(values.stream()
+                                        .map(v -> io.qdrant.client.grpc.Points.Value.newBuilder()
+                                            .setStringValue(v.toString()).build())
+                                        .collect(Collectors.toList()))
+                                    .build())
+                                .build())
+                            .build())
+                        .build();
+                    filterBuilder.addShould(condition);
+                }
+            }
+        }
+        
+        return filterBuilder.build();
+    }
+
     private VectorSearchResult convertToSearchResult(ScoredPoint scoredPoint) {
         Map<String, Object> payload = new HashMap<>();
         scoredPoint.getPayloadMap().forEach((key, value) -> {
@@ -161,6 +286,8 @@ public class VectorDatabaseService {
                 payload.put(key, value.getStringValue());
             } else if (value.hasIntegerValue()) {
                 payload.put(key, value.getIntegerValue());
+            } else if (value.hasBoolValue()) {
+                payload.put(key, value.getBoolValue());
             }
         });
 
@@ -169,5 +296,50 @@ public class VectorDatabaseService {
                 scoredPoint.getScore(),
                 payload
         );
+    }
+    
+    /**
+     * Batch upsert vectors for better performance
+     */
+    public void storeVectorsBatch(List<VectorPoint> vectorPoints) {
+        try {
+            List<PointStruct> points = vectorPoints.stream()
+                .map(vectorPoint -> PointStruct.newBuilder()
+                    .setId(PointId.newBuilder().setUuid(vectorPoint.getId()).build())
+                    .setVectors(Vectors.newBuilder().setVector(
+                        Vector.newBuilder().addAllData(vectorPoint.getVector()).build()
+                    ).build())
+                    .putAllPayload(convertPayload(vectorPoint.getPayload()))
+                    .build())
+                .collect(Collectors.toList());
+
+            var upsertPoints = UpsertPoints.newBuilder()
+                .setCollectionName(collectionName)
+                .addAllPoints(points)
+                .build();
+
+            qdrantClient.upsertAsync(upsertPoints).get();
+            logger.debug("Stored {} vector points in batch", vectorPoints.size());
+        } catch (Exception e) {
+            logger.error("Failed to store vector batch: {}", e.getMessage());
+            throw new RuntimeException("Vector batch storage failed", e);
+        }
+    }
+    
+    /**
+     * Get collection info for monitoring
+     */
+    public Map<String, Object> getCollectionInfo() {
+        try {
+            var collectionInfo = qdrantClient.getCollectionInfoAsync(collectionName).get();
+            Map<String, Object> info = new HashMap<>();
+            info.put("vectorsCount", collectionInfo.getResult().getVectorsCount());
+            info.put("indexedVectorsCount", collectionInfo.getResult().getIndexedVectorsCount());
+            info.put("status", collectionInfo.getResult().getStatus().name());
+            return info;
+        } catch (Exception e) {
+            logger.error("Failed to get collection info: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
     }
 }
