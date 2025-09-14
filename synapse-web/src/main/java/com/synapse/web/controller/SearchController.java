@@ -6,6 +6,7 @@ import com.synapse.core.dto.SearchFeedbackRequest;
 import com.synapse.core.dto.QARequest;
 import com.synapse.core.dto.QAResponse;
 import com.synapse.core.service.QAService;
+import com.synapse.core.service.MultilingualQAService;
 import com.synapse.core.service.SearchService;
 import com.synapse.core.service.AuditService;
 import com.synapse.security.annotation.RequireRole;
@@ -31,6 +32,9 @@ public class SearchController {
 
     @Autowired
     private QAService qaService;
+    
+    @Autowired
+    private MultilingualQAService multilingualQAService;
 
     @Autowired
     private AuditService auditService;
@@ -105,15 +109,18 @@ public class SearchController {
         Long userId = SecurityUtils.getCurrentUserId();
         
         try {
-            logger.info("Q&A request from user {}: question='{}'", userId, request.getQuestion());
+            logger.info("Q&A request from user {}: question='{}', language='{}'", 
+                       userId, request.getQuestion(), request.getLanguage());
             
-            QAResponse response = qaService.answerQuestion(request, userId);
+            // Use multilingual Q&A service for enhanced processing
+            QAResponse response = multilingualQAService.processQuestion(request, userId);
             
-            // Log Q&A activity
+            // Log Q&A activity with language information
             auditService.logActivity(
                 userId,
                 "QA_QUERY",
-                "Asked question: " + request.getQuestion(),
+                String.format("Asked question in %s: %s (confidence: %.2f)", 
+                             response.getLanguage(), request.getQuestion(), response.getConfidence()),
                 "SearchController.askQuestion"
             );
             
@@ -121,6 +128,32 @@ public class SearchController {
             
         } catch (Exception e) {
             logger.error("Q&A failed for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @PostMapping("/qa/feedback")
+    @RequireRole("USER")
+    public ResponseEntity<Void> submitQAFeedback(@Valid @RequestBody QAFeedbackRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        
+        try {
+            logger.info("Q&A feedback from user {}: conversationId='{}', helpful={}", 
+                       userId, request.getConversationId(), request.isHelpful());
+            
+            // Log Q&A feedback activity
+            auditService.logActivity(
+                userId,
+                "QA_FEEDBACK",
+                String.format("Submitted Q&A feedback: conversationId=%s, helpful=%s, rating=%d", 
+                             request.getConversationId(), request.isHelpful(), request.getRating()),
+                "SearchController.submitQAFeedback"
+            );
+            
+            return ResponseEntity.ok().build();
+            
+        } catch (Exception e) {
+            logger.error("Failed to submit Q&A feedback for user {}: {}", userId, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -139,5 +172,44 @@ public class SearchController {
             "how to " + query,
             query + " best practices"
         };
+    }
+    
+    public static class QAFeedbackRequest {
+        private String conversationId;
+        private boolean helpful;
+        private int rating;
+        private String comment;
+        
+        public String getConversationId() {
+            return conversationId;
+        }
+        
+        public void setConversationId(String conversationId) {
+            this.conversationId = conversationId;
+        }
+        
+        public boolean isHelpful() {
+            return helpful;
+        }
+        
+        public void setHelpful(boolean helpful) {
+            this.helpful = helpful;
+        }
+        
+        public int getRating() {
+            return rating;
+        }
+        
+        public void setRating(int rating) {
+            this.rating = rating;
+        }
+        
+        public String getComment() {
+            return comment;
+        }
+        
+        public void setComment(String comment) {
+            this.comment = comment;
+        }
     }
 }
