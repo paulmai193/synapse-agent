@@ -1,16 +1,15 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { Provider } from 'react-redux';
 import { store } from './store';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import TokenManager from './components/auth/TokenManager';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import { useDispatch, useSelector } from 'react-redux';
-import { setUser } from './store/authSlice';
-import { authApi } from './utils/api';
-import { RootState } from './store';
+import Profile from './pages/Profile';
 
 const theme = createTheme({
   palette: {
@@ -25,28 +24,12 @@ const theme = createTheme({
 });
 
 const AppContent: React.FC = () => {
-  const dispatch = useDispatch();
-  const { token, isAuthenticated } = useSelector((state: RootState) => state.auth);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      if (token && !isAuthenticated) {
-        try {
-          const user = await authApi.getCurrentUser();
-          dispatch(setUser(user));
-        } catch (error) {
-          localStorage.removeItem('token');
-        }
-      }
-    };
-
-    initAuth();
-  }, [token, isAuthenticated, dispatch]);
-
   return (
     <Router>
+      <TokenManager />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route 
@@ -54,6 +37,14 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } 
           />

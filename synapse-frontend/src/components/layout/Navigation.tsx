@@ -1,12 +1,13 @@
 import React from 'react';
 import { Button, Box } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../store';
+import { useDispatch } from 'react-redux';
 import { logout } from '../../store/authSlice';
+import { useAuth } from '../../hooks/useAuth';
+import RoleBasedComponent from '../common/RoleBasedComponent';
 
 const Navigation: React.FC = () => {
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated } = useAuth();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -28,10 +29,6 @@ const Navigation: React.FC = () => {
     );
   }
 
-  const isAdmin = user?.roles.some(role => 
-    ['SYSTEM_ADMIN', 'PROJECT_ADMIN', 'DEPARTMENT_ADMIN'].includes(role.name)
-  );
-
   return (
     <Box>
       <Button color="inherit" component={Link} to="/search">
@@ -40,11 +37,14 @@ const Navigation: React.FC = () => {
       <Button color="inherit" component={Link} to="/documents">
         Documents
       </Button>
-      {isAdmin && (
+      <Button color="inherit" component={Link} to="/profile">
+        Profile
+      </Button>
+      <RoleBasedComponent requiredRoles={['SYSTEM_ADMIN', 'PROJECT_ADMIN', 'DEPARTMENT_ADMIN']}>
         <Button color="inherit" component={Link} to="/admin">
           Admin
         </Button>
-      )}
+      </RoleBasedComponent>
       <Button color="inherit" onClick={handleLogout}>
         Logout
       </Button>
