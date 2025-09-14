@@ -11,6 +11,7 @@ import Dashboard from './pages/dashboard/Dashboard';
 import Documents from './pages/documents/Documents';
 import Search from './pages/search/Search';
 import { QA } from './pages/QA';
+import { UserManagement } from './pages/admin/UserManagement';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 function App() {
@@ -65,10 +66,18 @@ function AppContent() {
               }
             />
             <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute roles={['SYSTEM_ADMIN', 'PROJECT_ADMIN', 'DEPARTMENT_ADMIN']}>
+                  <UserManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/*"
               element={
                 <ProtectedRoute roles={['SYSTEM_ADMIN', 'PROJECT_ADMIN', 'DEPARTMENT_ADMIN']}>
-                  <div>Admin Pages - Coming Soon</div>
+                  <div>Other Admin Pages - Coming Soon</div>
                 </ProtectedRoute>
               }
             />
