@@ -77,11 +77,15 @@ public class CacheConfig {
         // Configure specific cache TTL settings
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
         
+        // User authentication cache - 15 minutes (shorter for security)
+        cacheConfigurations.put("userAuth", 
+                defaultConfig.entryTtl(Duration.ofMinutes(15)));
+        
         // User permissions cache - 30 minutes
         cacheConfigurations.put("userPermissions", 
                 defaultConfig.entryTtl(Duration.ofMinutes(30)));
         
-        // Role data cache - 2 hours
+        // Role data cache - 2 hours (roles change infrequently)
         cacheConfigurations.put("roleData", 
                 defaultConfig.entryTtl(Duration.ofHours(2)));
         
@@ -89,17 +93,30 @@ public class CacheConfig {
         cacheConfigurations.put("documentMetadata", 
                 defaultConfig.entryTtl(Duration.ofHours(1)));
         
-        // Search results cache - 15 minutes
+        // Search results cache - 10 minutes (dynamic content)
         cacheConfigurations.put("searchResults", 
-                defaultConfig.entryTtl(Duration.ofMinutes(15)));
+                defaultConfig.entryTtl(Duration.ofMinutes(10)));
         
         // User profile cache - 1 hour
         cacheConfigurations.put("userProfile", 
                 defaultConfig.entryTtl(Duration.ofHours(1)));
         
+        // Permission lookup cache - 20 minutes
+        cacheConfigurations.put("permissionLookup", 
+                defaultConfig.entryTtl(Duration.ofMinutes(20)));
+        
+        // Embeddings cache - 24 hours (expensive to compute)
+        cacheConfigurations.put("embeddings", 
+                defaultConfig.entryTtl(Duration.ofHours(24)));
+        
+        // Query results cache - 5 minutes (for database optimization)
+        cacheConfigurations.put("queryResults", 
+                defaultConfig.entryTtl(Duration.ofMinutes(5)));
+        
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigurations)
+                .transactionAware() // Enable transaction support
                 .build();
     }
 }
