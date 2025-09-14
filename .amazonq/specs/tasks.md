@@ -204,7 +204,7 @@
 
 ## 8. External System Integration
 
-- [ ] 8.1 Implement Confluence integration service
+- [x] 8.1 Implement Confluence integration service
   - Create ConfluenceIntegrationService with REST API client for Confluence Cloud/Server
   - Implement authentication handling (API tokens, OAuth) and connection configuration
   - Add content synchronization with change detection using page modification timestamps
@@ -213,7 +213,7 @@
   - Write integration tests for Confluence connectivity and content extraction
   - _Requirements: 4.1, 4.3, 4.4_
 
-- [ ] 8.2 Build repository integration service
+- [x] 8.2 Build repository integration service
   - Implement Git repository API clients for GitHub, GitLab, and Bitbucket using their REST APIs
   - Create documentation extraction service for README files, wiki pages, and code comments
   - Add repository content indexing with change tracking using commit webhooks
