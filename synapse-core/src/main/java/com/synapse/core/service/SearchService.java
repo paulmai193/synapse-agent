@@ -41,6 +41,9 @@ public class SearchService {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private ABTestingService abTestingService;
+
     private static final String NLP_SERVICE_URL = "http://localhost:8001/api/v1/text";
 
     public SearchResponse search(SearchRequest request, Long userId) {
@@ -65,8 +68,11 @@ public class SearchService {
             // Convert to search results
             List<SearchResult> searchResults = convertToSearchResults(vectorResults, accessibleProjectIds);
 
+            // Apply A/B testing for ranking algorithms
+            List<SearchResult> rankedResults = abTestingService.applyTestRanking(searchResults, userId, request.getQuery());
+            
             // Filter and rank results
-            List<SearchResult> filteredResults = filterAndRankResults(searchResults, request);
+            List<SearchResult> filteredResults = filterAndRankResults(rankedResults, request);
 
             long searchTime = System.currentTimeMillis() - startTime;
             
@@ -78,6 +84,10 @@ public class SearchService {
             );
             response.setLanguage(request.getLanguage());
 
+            // Record A/B test result
+            boolean userSatisfied = filteredResults.size() > 0; // Simplified satisfaction metric
+            abTestingService.recordTestResult(userId, request.getQuery(), filteredResults, userSatisfied, searchTime);
+            
             logger.info("Search completed: query='{}', results={}, time={}ms", 
                 request.getQuery(), filteredResults.size(), searchTime);
 

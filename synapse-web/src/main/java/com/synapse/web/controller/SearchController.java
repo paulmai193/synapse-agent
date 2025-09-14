@@ -42,6 +42,15 @@ public class SearchController {
     @Autowired
     private SearchAnalyticsService searchAnalyticsService;
 
+    @Autowired
+    private MLRankingService mlRankingService;
+
+    @Autowired
+    private ABTestingService abTestingService;
+
+    @Autowired
+    private RecommendationService recommendationService;
+
     @PostMapping
     @RequireRole("USER")
     public ResponseEntity<SearchResponse> search(@Valid @RequestBody SearchRequest request) {
@@ -365,6 +374,58 @@ public class SearchController {
         } catch (Exception e) {
             logger.error("Failed to get search quality metrics: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/ml/model-info")
+    @RequireRole("SYSTEM_ADMIN")
+    public ResponseEntity<Map<String, Object>> getMLModelInfo() {
+        try {
+            Map<String, Object> modelInfo = mlRankingService.getModelInfo();
+            return ResponseEntity.ok(modelInfo);
+        } catch (Exception e) {
+            logger.error("Failed to get ML model info: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/ab-test/results")
+    @RequireRole("SYSTEM_ADMIN")
+    public ResponseEntity<Map<String, Object>> getABTestResults() {
+        try {
+            Map<String, Object> results = abTestingService.getTestResults();
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            logger.error("Failed to get A/B test results: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @PostMapping("/ab-test/initialize")
+    @RequireRole("SYSTEM_ADMIN")
+    public ResponseEntity<Void> initializeABTest(@RequestParam String testName, 
+                                                 @RequestParam double trafficSplit) {
+        try {
+            abTestingService.initializeABTest(testName, trafficSplit);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            logger.error("Failed to initialize A/B test: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @GetMapping("/recommendations/suggestions")
+    @RequireRole("USER")
+    public ResponseEntity<List<String>> getPersonalizedSuggestions(@RequestParam String query, 
+                                                                  @RequestParam(defaultValue = "5") int limit) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        
+        try {
+            List<String> suggestions = recommendationService.getPersonalizedSuggestions(userId, query, limit);
+            return ResponseEntity.ok(suggestions);
+        } catch (Exception e) {
+            logger.error("Failed to get personalized suggestions for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.ok(Collections.emptyList());
         }
     }
     
