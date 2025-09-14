@@ -17,12 +17,14 @@ import {
   Logout,
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { RootState } from '../../store';
 import { toggleSidebar, toggleTheme } from '../../store/slices/uiSlice';
 import { useAuth } from '../../hooks/useAuth';
 
 const Header: React.FC = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { theme } = useSelector((state: RootState) => state.ui);
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -84,7 +86,7 @@ const Header: React.FC = () => {
               horizontal: 'right',
             }}
           >
-            <MenuItem onClick={handleClose}>
+            <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>
               <AccountCircle sx={{ mr: 1 }} />
               Profile
             </MenuItem>

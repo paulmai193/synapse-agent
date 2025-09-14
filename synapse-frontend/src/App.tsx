@@ -5,15 +5,29 @@ import { store } from './store';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import Profile from './pages/auth/Profile';
 import Dashboard from './pages/dashboard/Dashboard';
+import { useTokenRefresh } from './hooks/useTokenRefresh';
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
-        <Layout>
+        <AppContent />
+      </Router>
+    </Provider>
+  );
+}
+
+function AppContent() {
+  useTokenRefresh();
+  
+  return (
+    <Layout>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/dashboard"
@@ -56,11 +70,17 @@ function App() {
               }
             />
             <Route path="/unauthorized" element={<div>Unauthorized Access</div>} />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<div>Page Not Found</div>} />
           </Routes>
         </Layout>
-      </Router>
-    </Provider>
   );
 }
 
