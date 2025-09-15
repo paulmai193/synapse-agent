@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  mongodb:
+    environment:
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongodb_password
+    secrets:
+      - mongodb_password
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  redis:
+    command: redis-server --requirepass-file /run/secrets/redis_password
+    secrets:
+      - redis_password
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  nlp-service:
+    environment:
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    secrets:
+      - redis_password
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  backend:
+    environment:
+      - SPRING_DATASOURCE_PASSWORD_FILE=/run/secrets/postgres_password
+      - SPRING_REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+    secrets:
+      - postgres_password
+      - redis_password
+      - jwt_secret
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 3G
+        reservations:
+          memory: 2G
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+  frontend:
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+secrets:
+  postgres_password:
+    external: true
+  mongodb_password:
+    external: true
+  redis_password:
+    external: true
+  jwt_secret:
+    external: true

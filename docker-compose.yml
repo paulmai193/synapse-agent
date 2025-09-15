@@ -1,0 +1,188 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: synapse-postgres
+    environment:
+      POSTGRES_DB: synapse
+      POSTGRES_USER: synapse
+      POSTGRES_PASSWORD: synapse_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./synapse-data/src/main/resources/db/migration:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synapse"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - synapse-network
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:5.0
+    container_name: synapse-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: synapse
+      MONGO_INITDB_ROOT_PASSWORD: synapse_password
+      MONGO_INITDB_DATABASE: synapse
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/synapse --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - synapse-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: synapse-redis
+    command: redis-server --requirepass synapse_password
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - synapse-network
+
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: synapse-qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      QDRANT__SERVICE__HTTP_PORT: 6333
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - synapse-network
+
+  # NLP Microservice
+  nlp-service:
+    build:
+      context: ./nlp-service
+      dockerfile: Dockerfile
+    container_name: synapse-nlp
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - REDIS_PASSWORD=synapse_password
+    ports:
+      - "8001:8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - synapse-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: synapse-backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/synapse
+      - SPRING_DATASOURCE_USERNAME=synapse
+      - SPRING_DATASOURCE_PASSWORD=synapse_password
+      - SPRING_DATA_MONGODB_URI=mongodb://synapse:synapse_password@mongodb:27017/synapse
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=synapse_password
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - NLP_SERVICE_URL=http://nlp-service:8001
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      nlp-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - synapse-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./synapse-frontend
+      dockerfile: Dockerfile
+    container_name: synapse-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - synapse-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  qdrant_data:
+
+networks:
+  synapse-network:
+    driver: bridge

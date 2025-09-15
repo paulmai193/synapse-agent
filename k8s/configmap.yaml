@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: synapse-config
+  namespace: synapse
+data:
+  # Database Configuration
+  POSTGRES_DB: "synapse"
+  POSTGRES_USER: "synapse"
+  MONGODB_DATABASE: "synapse"
+  MONGODB_USERNAME: "synapse"
+  
+  # Redis Configuration
+  REDIS_HOST: "synapse-redis"
+  REDIS_PORT: "6379"
+  
+  # Qdrant Configuration
+  QDRANT_HOST: "synapse-qdrant"
+  QDRANT_PORT: "6333"
+  
+  # NLP Service Configuration
+  NLP_SERVICE_URL: "http://synapse-nlp:8001"
+  
+  # Spring Boot Configuration
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://synapse-postgres:5432/synapse"
+  SPRING_DATA_MONGODB_URI: "mongodb://synapse:$(MONGODB_PASSWORD)@synapse-mongodb:27017/synapse"

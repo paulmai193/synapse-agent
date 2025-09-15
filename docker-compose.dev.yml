@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
+  mongodb:
+    ports:
+      - "27017:27017"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+
+  nlp-service:
+    build:
+      context: ./nlp-service
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - ./nlp-service:/app
+      - /app/__pycache__
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    ports:
+      - "8001:8001"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      target: development
+    volumes:
+      - ./synapse-web/target:/app/target
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DEVTOOLS_RESTART_ENABLED=true
+    ports:
+      - "8080:8080"
+      - "5005:5005"  # Debug port
+
+  frontend:
+    build:
+      context: ./synapse-frontend
+      dockerfile: Dockerfile
+      target: development
+    volumes:
+      - ./synapse-frontend/src:/app/src
+      - ./synapse-frontend/public:/app/public
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    command: npm run dev
